@@ -121,7 +121,29 @@ class HLPVaultMonitor(BaseAggregator):
             HLPVaultSnapshot object
         """
         # Extract portfolio data
-        portfolio = vault_data.get('portfolio', [])
+        # API returns: {"portfolio": [["day", {"accountValueHistory": [[ts, val], ...]}], ...]}
+        portfolio_raw = vault_data.get('portfolio', [])
+
+        # Convert to flat list of entries for processing
+        portfolio = []
+        if isinstance(portfolio_raw, list) and len(portfolio_raw) > 0:
+            # Find the 'day' period data (most granular)
+            for period_data in portfolio_raw:
+                if isinstance(period_data, list) and len(period_data) >= 2:
+                    period_name = period_data[0]
+                    if period_name == "day":
+                        # Extract accountValueHistory
+                        history_data = period_data[1]
+                        if isinstance(history_data, dict):
+                            account_value_history = history_data.get('accountValueHistory', [])
+                            # Convert to our format: [{'timestamp': ms, 'accountValue': str}, ...]
+                            for entry in account_value_history:
+                                if isinstance(entry, list) and len(entry) >= 2:
+                                    portfolio.append({
+                                        'timestamp': entry[0],
+                                        'accountValue': entry[1]
+                                    })
+                        break
 
         # Get latest account value
         account_value = 0.0

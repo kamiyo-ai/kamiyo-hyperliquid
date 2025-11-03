@@ -38,15 +38,31 @@ class LiquidationAnalyzer(BaseAggregator):
 
     # Detection thresholds
     FLASH_LOAN_WINDOW_SEC = 10         # Flash loan happens within 10 seconds
-    FLASH_LOAN_MIN_USD = 500_000       # Minimum $500k to be suspicious
+    FLASH_LOAN_MIN_USD = 500000        # Minimum $500k to be suspicious
     CASCADE_WINDOW_SEC = 300           # Cascade happens within 5 minutes
     CASCADE_MIN_LIQUIDATIONS = 5       # At least 5 liquidations
     MANIPULATION_PRICE_IMPACT = 2.0    # >2% price impact is suspicious
 
-    def __init__(self):
+    def __init__(self, monitored_addresses: List[str] = None):
+        """
+        Initialize liquidation analyzer
+
+        Args:
+            monitored_addresses: List of wallet addresses to monitor for liquidations.
+                                If None/empty, analyzer will use alternative data sources.
+        """
         super().__init__("liquidation_analyzer")
         self.recent_liquidations: List[Dict[str, Any]] = []
         self.detected_patterns: List[LiquidationPattern] = []
+        self.monitored_addresses = monitored_addresses or []
+
+        # Note: Hyperliquid API doesn't provide "all liquidations" endpoint
+        # Options for getting liquidation data:
+        # 1. Monitor specific high-value addresses (set via monitored_addresses)
+        # 2. Integrate with third-party aggregators (CoinGlass, etc)
+        # 3. WebSocket subscriptions for real-time monitoring
+        # 4. Historical data from GitHub repository
+        self.logger.info(f"Monitoring {len(self.monitored_addresses)} addresses for liquidations")
 
     def fetch_exploits(self) -> List[Dict[str, Any]]:
         """
@@ -89,20 +105,128 @@ class LiquidationAnalyzer(BaseAggregator):
 
     def _fetch_recent_liquidations(self) -> List[Dict[str, Any]]:
         """
-        Fetch recent liquidations from Hyperliquid API
+        Fetch recent liquidations from monitored addresses
+
+        Note: Hyperliquid API limitation - there's no "all liquidations" endpoint.
+        This implementation fetches fills for monitored addresses and identifies liquidations.
 
         Returns:
             List of liquidation dictionaries
         """
-        # TODO: Implement actual liquidation fetching
-        # For now, return empty list (placeholder)
+        liquidations = []
 
-        # The actual implementation would:
-        # 1. Query user states to find liquidated positions
-        # 2. Parse liquidation events from fills
-        # 3. Track price movements around liquidations
+        if not self.monitored_addresses:
+            # No addresses to monitor
+            self.logger.debug("No monitored addresses configured for liquidation tracking")
+            return liquidations
 
-        return []
+        for address in self.monitored_addresses:
+            try:
+                # Fetch user fills
+                payload = {
+                    "type": "userFills",
+                    "user": address
+                }
+
+                response = self.make_request(
+                    self.API_URL,
+                    method='POST',
+                    json=payload,
+                    headers={'Content-Type': 'application/json'}
+                )
+
+                if not response:
+                    continue
+
+                fills = response.json()
+
+                # Parse fills to identify liquidations
+                # Liquidations are typically marked by specific fill types or large losses
+                for fill in fills:
+                    if self._is_liquidation_fill(fill):
+                        liquidation = self._parse_liquidation(fill, address)
+                        if liquidation:
+                            liquidations.append(liquidation)
+
+            except Exception as e:
+                self.logger.error(f"Error fetching liquidations for {address}: {e}")
+                continue
+
+        return liquidations
+
+    def _is_liquidation_fill(self, fill: Dict[str, Any]) -> bool:
+        """
+        Determine if a fill represents a liquidation
+
+        Args:
+            fill: Fill data from API
+
+        Returns:
+            True if fill is a liquidation
+        """
+        # Liquidations typically have:
+        # - Large position closures
+        # - Negative PnL
+        # - Specific direction patterns ("Close Long", "Close Short")
+
+        try:
+            direction = fill.get('dir', '')
+            closed_pnl = float(fill.get('closedPnl', 0))
+            size = abs(float(fill.get('sz', 0)))
+
+            # Heuristics for liquidation:
+            # 1. Position is being closed
+            # 2. Significant size
+            # 3. Negative PnL (losing position)
+            is_close = 'Close' in direction
+            is_large = size > 0.1  # Adjust threshold as needed
+            is_loss = closed_pnl < 0
+
+            # Additional check: liquidations often happen near mark price
+            # and may have specific fee structures
+
+            return is_close and is_large and is_loss
+
+        except Exception as e:
+            self.logger.error(f"Error checking if fill is liquidation: {e}")
+            return False
+
+    def _parse_liquidation(self, fill: Dict[str, Any], user: str) -> Optional[Dict[str, Any]]:
+        """
+        Parse fill data into liquidation format
+
+        Args:
+            fill: Fill data from API
+            user: User address
+
+        Returns:
+            Liquidation dictionary or None
+        """
+        try:
+            # Extract relevant fields
+            timestamp_ms = fill.get('time', 0)
+            timestamp = datetime.fromtimestamp(timestamp_ms / 1000) if timestamp_ms else datetime.now()
+
+            return {
+                'liquidation_id': f"liq-{fill.get('oid', 'unknown')}",
+                'user': user,
+                'asset': fill.get('coin', 'UNKNOWN'),
+                'side': 'LONG' if 'Long' in fill.get('dir', '') else 'SHORT',
+                'size': abs(float(fill.get('sz', 0))),
+                'liquidation_price': float(fill.get('px', 0)),
+                'amount_usd': abs(float(fill.get('closedPnl', 0))),  # Using closed PnL as approximation
+                'timestamp': timestamp,
+                'source': 'hyperliquid_api',
+                'metadata': {
+                    'fill_id': fill.get('oid'),
+                    'direction': fill.get('dir'),
+                    'closed_pnl': float(fill.get('closedPnl', 0))
+                }
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error parsing liquidation: {e}")
+            return None
 
     def _cleanup_old_liquidations(self):
         """Remove liquidations older than 1 hour"""
@@ -235,7 +359,7 @@ class LiquidationAnalyzer(BaseAggregator):
             if len(user_liquidations) >= 3:
                 total_usd = sum(liq.get('amount_usd', 0) for liq in user_liquidations)
 
-                if total_usd >= 1_000_000:  # $1M+ in total
+                if total_usd >= 1000000:  # $1M+ in total
                     pattern = self._create_coordinated_pattern(user, user_liquidations)
                     patterns.append(pattern)
 
@@ -304,12 +428,40 @@ class LiquidationAnalyzer(BaseAggregator):
         users = set(liq.get('user') for liq in liquidations if liq.get('user'))
         assets = list(set(liq.get('asset') for liq in liquidations if liq.get('asset')))
 
+        # Calculate price impact per asset
+        price_impact = {}
+        asset_liquidations = defaultdict(list)
+        for liq in liquidations:
+            asset = liq.get('asset')
+            if asset:
+                asset_liquidations[asset].append(liq)
+
+        for asset, asset_liqs in asset_liquidations.items():
+            if len(asset_liqs) >= 2:
+                # Calculate price movement if we have multiple liquidations
+                prices = [liq.get('liquidation_price', 0) for liq in asset_liqs]
+                min_price = min(prices)
+                max_price = max(prices)
+                if min_price > 0:
+                    impact_pct = ((max_price - min_price) / min_price) * 100
+                    price_impact[asset] = impact_pct
+            else:
+                # Single liquidation - estimate impact based on size
+                # Large liquidations typically have ~0.5-2% market impact
+                size_usd = asset_liqs[0].get('amount_usd', 0)
+                if size_usd > 1000000:
+                    price_impact[asset] = 1.5  # Estimate for large liquidation
+                elif size_usd > 500000:
+                    price_impact[asset] = 1.0
+                else:
+                    price_impact[asset] = 0.5
+
         # Calculate suspicion score
         suspicion_score = self._calculate_flash_loan_suspicion(liquidations, total_usd)
 
         # Identify suspicious indicators
         indicators = []
-        if total_usd > 2_000_000:
+        if total_usd > 2000000:
             indicators.append(f"Very large amount: ${total_usd:,.0f}")
         if len(liquidations) == 1:
             indicators.append("Single large liquidation in short window")
@@ -327,7 +479,7 @@ class LiquidationAnalyzer(BaseAggregator):
             affected_users=len(users),
             duration_seconds=self.FLASH_LOAN_WINDOW_SEC,
             assets_involved=assets,
-            price_impact={},  # TODO: Calculate actual price impact
+            price_impact=price_impact,
             suspicion_score=suspicion_score,
             indicators=indicators,
             is_cross_block=len(liquidations) > 1
@@ -429,17 +581,17 @@ class LiquidationAnalyzer(BaseAggregator):
         score = 0.0
 
         # Amount component (0-50 points)
-        if total_usd > 5_000_000:
+        if total_usd > 5000000:
             score += 50
-        elif total_usd > 2_000_000:
+        elif total_usd > 2000000:
             score += 40
-        elif total_usd > 1_000_000:
+        elif total_usd > 1000000:
             score += 30
         else:
             score += (total_usd / self.FLASH_LOAN_MIN_USD) * 20
 
         # Single vs multiple liquidations (0-30 points)
-        if len(liquidations) == 1 and total_usd > 2_000_000:
+        if len(liquidations) == 1 and total_usd > 2000000:
             score += 30  # Single huge liquidation is very suspicious
 
         # Speed component (0-20 points)
@@ -460,7 +612,7 @@ class LiquidationAnalyzer(BaseAggregator):
         score += min(30, (count / 10) * 30)
 
         # Amount component (0-40 points)
-        score += min(40, (total_usd / 5_000_000) * 40)
+        score += min(40, (total_usd / 5000000) * 40)
 
         # Price impact component (0-30 points)
         if price_impact_pct > 5.0:
@@ -478,7 +630,7 @@ class LiquidationAnalyzer(BaseAggregator):
         score += min(50, (count / 5) * 50)
 
         # Amount component (0-50 points)
-        score += min(50, (total_usd / 3_000_000) * 50)
+        score += min(50, (total_usd / 3000000) * 50)
 
         return min(100, score)
 
