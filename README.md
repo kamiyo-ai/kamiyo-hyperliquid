@@ -2,7 +2,7 @@
 
 Real-time exploit detection for Hyperliquid DEX. Monitors HLP vault health, liquidation patterns, and oracle price deviations.
 
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
 ## Overview
@@ -141,7 +141,11 @@ This module integrates with the KAMIYO platform as aggregator sources #20 (HLP m
 
 ## License
 
-GPL-3.0. See [LICENSE](LICENSE) for terms.
+AGPL-3.0 with commercial restriction. See [LICENSE](LICENSE) for full terms.
+
+**Non-commercial use:** Free under AGPL-3.0 (research, education, personal projects, non-profits <$1M revenue)
+
+**Commercial use:** Requires separate license. Contact licensing@kamiyo.ai
 
 ## Security
 
