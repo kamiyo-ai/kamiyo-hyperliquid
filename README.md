@@ -4,7 +4,7 @@
 
 ![KAMIYO Logo](https://via.placeholder.com/200x200/4A90E2/FFFFFF?text=KAMIYO)
 
-**Exploit Intelligence Aggregator for Hyperliquid DEX**
+**Security Intelligence & Exploit Detection for Hyperliquid DEX**
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
@@ -18,7 +18,7 @@
 
 ---
 
-Specialized aggregator for tracking exploits, liquidations, and security events in the Hyperliquid ecosystem with real-time monitoring and multi-source data aggregation.
+**Real-time security monitoring and exploit detection for the Hyperliquid DEX ecosystem.** Part of the [KAMIYO](https://kamiyo.ai) security intelligence platform - extending exploit detection from 20+ blockchain sources to Hyperliquid-specific attack vectors including HLP vault manipulation, liquidation cascades, and oracle price deviations.
 
 ## 📋 Table of Contents
 
@@ -39,66 +39,170 @@ Specialized aggregator for tracking exploits, liquidations, and security events 
 
 ## 🎯 Overview
 
-KAMIYO Hyperliquid monitors and aggregates liquidation and exploit data from multiple sources specific to the Hyperliquid DEX ecosystem, providing real-time insights and historical analysis.
+KAMIYO Hyperliquid provides **independent security monitoring** for the Hyperliquid DEX ecosystem, detecting exploits and attack patterns that affect traders, liquidity providers, and the protocol itself. As an external security intelligence layer, we can alert users to threats without creating protocol-level panic.
+
+### 🚨 What We Detect
 
 ```mermaid
-graph LR
-    A[👤 Client] -->|Request| B[🔧 KAMIYO API]
-    B -->|Aggregate| C[📊 Data Sources]
-    C -->|Stream| B
-    B -->|Results| A
+graph TB
+    subgraph "Security Monitors"
+        HLP[🏦 HLP Vault Monitor]
+        LIQ[⚡ Liquidation Analyzer]
+        ORA[📊 Oracle Monitor]
+    end
 
-    C1[Hyperliquid API] --> C
-    C2[GitHub Historical] --> C
-    C3[CoinGlass] --> C
-    C4[Social Media] --> C
+    subgraph "Threat Detection"
+        HLP --> T1[Vault Exploitation]
+        HLP --> T2[Abnormal Losses]
+        LIQ --> T3[Flash Loan Attacks]
+        LIQ --> T4[Cascade Liquidations]
+        ORA --> T5[Price Manipulation]
+        ORA --> T6[Oracle Deviations]
+    end
 
-    style B fill:#4A90E2,stroke:#333,stroke-width:2px
-    style C fill:#2ECC71,stroke:#333,stroke-width:2px
+    subgraph "Alerts"
+        T1 --> ALERT[🚨 Real-Time Alerts]
+        T2 --> ALERT
+        T3 --> ALERT
+        T4 --> ALERT
+        T5 --> ALERT
+        T6 --> ALERT
+    end
+
+    ALERT --> USER[👤 Traders & LPs]
+
+    style HLP fill:#E74C3C
+    style LIQ fill:#F39C12
+    style ORA fill:#3498DB
+    style ALERT fill:#E74C3C
 ```
 
-### Key Capabilities
+### 🎯 Key Capabilities
 
-| Capability | Description |
-|-----------|-------------|
-| 🎯 **Hyperliquid-Focused** | Purpose-built for Hyperliquid DEX ecosystem |
-| ⚡ **Real-Time** | WebSocket streaming of liquidations & exploits |
-| 🔄 **Multi-Source** | Aggregates from 5+ data sources |
-| 📊 **Analytics** | Historical analysis & statistical insights |
-| 🔌 **REST + WebSocket** | Both polling and streaming interfaces |
-| 🗄️ **Persistent Storage** | PostgreSQL + Redis caching |
+| Capability | Description | Status |
+|-----------|-------------|--------|
+| 🏦 **HLP Vault Monitoring** | Real-time health tracking with anomaly detection (3-sigma analysis) | ✅ Active |
+| ⚡ **Liquidation Analysis** | Detects flash loans, cascades, and coordinated attacks | ✅ Active |
+| 📊 **Oracle Monitoring** | Price deviation tracking vs Binance/Coinbase | ✅ Active |
+| 🚨 **Security Alerts** | <15 min detection time (KAMIYO standard) | ✅ Active |
+| 🔄 **Multi-Source Intel** | Aggregates from Hyperliquid + KAMIYO's 20+ sources | ✅ Active |
+| 📈 **Risk Scoring** | Overall ecosystem risk score (0-100) | ✅ Active |
 
 ## ✨ Features
 
-### Core Features
+### 🏦 HLP Vault Health Monitor
 
-#### 📡 Real-Time Monitoring
-- WebSocket streaming for instant liquidation alerts
-- Sub-second latency for critical events
-- Automatic reconnection and error recovery
+**Protects liquidity providers from vault exploitation**
 
-#### 🔍 Multi-Source Aggregation
-- **Official**: Hyperliquid API & GitHub historical data
-- **Analytics**: CoinGlass whale tracking & liquidation heatmaps
-- **Social**: Twitter/X, Discord, Telegram monitoring
-- Intelligent deduplication across sources
+```python
+# Real-time detection of
+- Large losses: >$1M in 1 hour = CRITICAL alert
+- Statistical anomalies: 3-sigma deviations from historical mean
+- Abnormal drawdowns: >10% drawdown triggers investigation
+- Suspicious PnL patterns: Would have detected the $4M HLP incident
 
-#### 💾 Data Management
-- PostgreSQL for persistent storage
-- Redis caching for fast queries (<100ms)
-- Automatic data normalization & validation
+# Example alert
+{
+  "severity": "CRITICAL",
+  "threat_type": "hlp_exploitation",
+  "title": "HLP Vault Large Loss Detected: $2,150,000",
+  "description": "The HLP vault has experienced a significant loss...",
+  "recommended_action": "CRITICAL: Consider pausing HLP deposits..."
+}
+```
 
-#### 🔌 Developer-Friendly API
-- RESTful endpoints with OpenAPI documentation
-- WebSocket for real-time subscriptions
-- Python SDK for easy integration
-- Rate limiting & authentication
+**Key Metrics:**
+- Account value tracking
+- PnL analysis (24h, 7d, 30d)
+- Sharpe ratio & maximum drawdown
+- Anomaly score (0-100)
 
-#### 📊 Analytics & Insights
-- Historical liquidation analysis
-- Asset-specific statistics
-- User behavior patterns
-- Large liquidation alerts (>$100k)
+---
+
+### ⚡ Liquidation Pattern Analyzer
+
+**Detects liquidation-based exploits and manipulation**
+
+```python
+# Detection patterns
+1. Flash Loan Attacks
+   - Large liquidations within 10 seconds
+   - Minimum $500k threshold
+   - Same-block execution detection
+
+2. Cascade Liquidations
+   - Domino effects (5+ liquidations)
+   - Progressive price decline
+   - Within 5-minute window
+
+3. Coordinated Attacks
+   - Multiple large liquidations
+   - Related addresses
+   - Suspicious timing patterns
+```
+
+**Suspicion Scoring:**
+- 0-30: Normal market activity
+- 30-70: Unusual pattern, monitoring
+- 70-100: Highly suspicious, alert triggered
+
+---
+
+### 📊 Oracle Deviation Monitor
+
+**Protects traders from price manipulation**
+
+```python
+# Real-time comparison
+Hyperliquid Price vs:
+├── Binance (primary reference)
+├── Coinbase (secondary reference)
+└── Risk assessment
+
+# Alert thresholds
+- 0.3% deviation: Warning
+- 0.5% deviation for >30s: Dangerous
+- 1.0% deviation: Critical
+
+# Example detection
+{
+  "asset": "BTC",
+  "hyperliquid_price": 95450.00,
+  "binance_price": 95000.00,
+  "max_deviation_pct": 0.47,
+  "duration_seconds": 45,
+  "is_dangerous": true,
+  "risk_score": 75
+}
+```
+
+**Protects Against:**
+- Oracle manipulation attacks
+- Flash crash exploitation
+- Price feed anomalies
+- Cross-exchange arbitrage abuse
+
+---
+
+### 🚨 Security Dashboard
+
+**Comprehensive risk monitoring**
+
+- **Overall Risk Score** (0-100)
+  - LOW: 0-29 (Normal operations)
+  - MEDIUM: 30-49 (Minor anomalies)
+  - HIGH: 50-69 (Investigate)
+  - CRITICAL: 70-100 (Immediate action)
+
+- **Real-Time Alerts**
+  - Severity-based filtering
+  - Multi-channel notifications
+  - Actionable recommendations
+
+- **Historical Analysis**
+  - Exploit timeline
+  - Attack pattern trends
+  - Ecosystem health tracking
 
 ## 🏗️ Architecture
 
@@ -235,7 +339,173 @@ curl http://localhost:8000/stats/hyperliquid
 
 ## 🔌 API Usage
 
-### REST API Endpoints
+### 🚨 Security Monitoring Endpoints
+
+#### Get Security Dashboard
+
+**Comprehensive security overview with risk scores**
+
+```bash
+curl http://localhost:8000/security/dashboard
+```
+
+<details>
+<summary>Response Example</summary>
+
+```json
+{
+  "success": true,
+  "timestamp": "2025-11-03T14:30:00Z",
+  "overall_risk": {
+    "score": 35,
+    "level": "MEDIUM"
+  },
+  "hlp_vault": {
+    "is_healthy": true,
+    "anomaly_score": 25,
+    "account_value": 425000000.0,
+    "pnl_24h": -150000.0
+  },
+  "oracle_monitoring": {
+    "active_deviations": 0,
+    "deviations": []
+  },
+  "recent_exploits": {
+    "count_24h": 0,
+    "total_loss_24h": 0,
+    "recent": []
+  },
+  "monitoring_status": {
+    "hlp_monitor": "active",
+    "oracle_monitor": "active",
+    "liquidation_analyzer": "active"
+  }
+}
+```
+</details>
+
+---
+
+#### Get HLP Vault Health
+
+**Real-time HLP vault monitoring and risk assessment**
+
+```bash
+curl http://localhost:8000/security/hlp-vault
+```
+
+<details>
+<summary>Response Example</summary>
+
+```json
+{
+  "success": true,
+  "timestamp": "2025-11-03T14:30:00Z",
+  "vault_address": "0xdfc24b077bc1425ad1dea75bcb6f8158e10df303",
+  "health_status": {
+    "is_healthy": true,
+    "anomaly_score": 25.5,
+    "health_issues": []
+  },
+  "metrics": {
+    "total_value_locked": 425000000.0,
+    "account_value": 425000000.0,
+    "pnl_24h": -150000.0,
+    "pnl_7d": 2300000.0,
+    "pnl_30d": 8500000.0
+  },
+  "performance": {
+    "sharpe_ratio": 2.45,
+    "max_drawdown": 3.2,
+    "win_rate": null
+  },
+  "risk_indicators": {
+    "volatility_score": 0,
+    "loss_streak_score": 0
+  }
+}
+```
+</details>
+
+---
+
+#### Get Oracle Deviations
+
+**Monitor price manipulation and oracle attacks**
+
+```bash
+curl "http://localhost:8000/security/oracle-deviations?active_only=true"
+```
+
+<details>
+<summary>Response Example</summary>
+
+```json
+{
+  "success": true,
+  "timestamp": "2025-11-03T14:30:00Z",
+  "count": 1,
+  "deviations": [
+    {
+      "timestamp": "2025-11-03T14:29:45Z",
+      "asset": "BTC",
+      "hyperliquid_price": 95450.0,
+      "binance_price": 95000.0,
+      "coinbase_price": 95020.0,
+      "max_deviation_pct": 0.47,
+      "duration_seconds": 45,
+      "is_dangerous": false,
+      "risk_score": 35
+    }
+  ]
+}
+```
+</details>
+
+---
+
+#### Get Security Events
+
+**Recent security events and alerts**
+
+```bash
+curl "http://localhost:8000/security/events?severity=high&limit=10"
+```
+
+<details>
+<summary>Response Example</summary>
+
+```json
+{
+  "success": true,
+  "count": 2,
+  "events": [
+    {
+      "event_id": "hlp-a1b2c3d4e5f6",
+      "timestamp": "2025-11-03T10:15:00Z",
+      "severity": "high",
+      "threat_type": "hlp_exploitation",
+      "title": "HLP Vault - $1,250,000 detected",
+      "description": "The HLP vault has experienced a significant loss...",
+      "source": "hlp_vault_monitor"
+    },
+    {
+      "event_id": "liq-fla-789abc123def",
+      "timestamp": "2025-11-03T08:42:00Z",
+      "severity": "high",
+      "threat_type": "liquidation_flash_loan",
+      "title": "Hyperliquid DEX - $850,000 detected",
+      "description": "Suspicious flash_loan liquidation pattern detected...",
+      "source": "liquidation_analyzer"
+    }
+  ]
+}
+```
+</details>
+
+---
+
+### 📊 Data & Analytics Endpoints
 
 #### Get Recent Liquidations
 

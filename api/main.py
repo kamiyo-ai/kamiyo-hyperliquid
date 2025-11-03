@@ -10,12 +10,13 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 import logging
 
-# Import aggregators
+# Import aggregators and monitors
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from aggregators import HyperliquidAPIAggregator, GitHubHistoricalAggregator
+from monitors import HLPVaultMonitor, LiquidationAnalyzer, OracleMonitor
 
 # Configure logging
 logging.basicConfig(
@@ -26,9 +27,9 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="KAMIYO Hyperliquid API",
-    description="Exploit intelligence aggregator for the Hyperliquid ecosystem",
-    version="1.0.0"
+    title="KAMIYO Hyperliquid Security Intelligence",
+    description="Real-time security monitoring and exploit detection for Hyperliquid ecosystem",
+    version="2.0.0"
 )
 
 # Configure CORS
@@ -44,10 +45,20 @@ app.add_middleware(
 hyperliquid_agg = HyperliquidAPIAggregator()
 github_agg = GitHubHistoricalAggregator()
 
+# Initialize security monitors
+hlp_monitor = HLPVaultMonitor()
+liquidation_analyzer = LiquidationAnalyzer()
+oracle_monitor = OracleMonitor()
+
 # In-memory cache (replace with Redis in production)
 exploit_cache = {
     'exploits': [],
     'last_updated': None
+}
+
+security_cache = {
+    'events': [],
+    'last_scan': None
 }
 
 
@@ -55,14 +66,29 @@ exploit_cache = {
 async def root():
     """Root endpoint"""
     return {
-        "name": "KAMIYO Hyperliquid API",
-        "version": "1.0.0",
-        "description": "Exploit intelligence aggregator for Hyperliquid",
+        "name": "KAMIYO Hyperliquid Security Intelligence",
+        "version": "2.0.0",
+        "description": "Real-time security monitoring and exploit detection for Hyperliquid ecosystem",
+        "features": [
+            "HLP Vault Health Monitoring",
+            "Liquidation Pattern Analysis",
+            "Oracle Deviation Detection",
+            "Multi-source Exploit Aggregation",
+            "Real-time Security Alerts"
+        ],
         "endpoints": {
-            "/exploits": "Get Hyperliquid exploits",
-            "/stats": "Get statistics",
-            "/health": "Health check",
-            "/meta": "Get Hyperliquid metadata"
+            "core": {
+                "/exploits": "Get detected exploits",
+                "/stats": "Get statistics",
+                "/health": "Health check",
+                "/meta": "Get Hyperliquid metadata"
+            },
+            "security": {
+                "/security/dashboard": "Security overview and risk scores",
+                "/security/hlp-vault": "HLP vault health status",
+                "/security/oracle-deviations": "Active oracle price deviations",
+                "/security/events": "Security events and alerts"
+            }
         }
     }
 
@@ -244,6 +270,28 @@ async def _fetch_all_exploits() -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error fetching from GitHub: {e}")
 
+    # Fetch from security monitors
+    try:
+        hlp_exploits = hlp_monitor.fetch_exploits()
+        all_exploits.extend(hlp_exploits)
+        logger.info(f"Fetched {len(hlp_exploits)} exploits from HLP monitor")
+    except Exception as e:
+        logger.error(f"Error fetching from HLP monitor: {e}")
+
+    try:
+        liquidation_exploits = liquidation_analyzer.fetch_exploits()
+        all_exploits.extend(liquidation_exploits)
+        logger.info(f"Fetched {len(liquidation_exploits)} exploits from liquidation analyzer")
+    except Exception as e:
+        logger.error(f"Error fetching from liquidation analyzer: {e}")
+
+    try:
+        oracle_exploits = oracle_monitor.fetch_exploits()
+        all_exploits.extend(oracle_exploits)
+        logger.info(f"Fetched {len(oracle_exploits)} exploits from oracle monitor")
+    except Exception as e:
+        logger.error(f"Error fetching from oracle monitor: {e}")
+
     # Deduplicate by tx_hash
     seen = set()
     unique_exploits = []
@@ -260,6 +308,251 @@ async def _fetch_all_exploits() -> List[Dict[str, Any]]:
     logger.info(f"Total unique exploits: {len(unique_exploits)}")
 
     return unique_exploits
+
+
+# ============================================================================
+# SECURITY MONITORING ENDPOINTS
+# ============================================================================
+
+@app.get("/security/dashboard")
+async def get_security_dashboard():
+    """
+    Get comprehensive security overview
+
+    Returns:
+        Security dashboard with risk scores, active threats, and health metrics
+    """
+    try:
+        # Get HLP vault health
+        hlp_health = hlp_monitor.get_current_health()
+
+        # Get active oracle deviations
+        oracle_deviations = oracle_monitor.get_current_deviations()
+
+        # Get recent exploits
+        recent_exploits = exploit_cache.get('exploits', [])[:10]
+
+        # Calculate overall risk score
+        risk_score = _calculate_overall_risk_score(hlp_health, oracle_deviations, recent_exploits)
+
+        # Determine risk level
+        risk_level = "LOW"
+        if risk_score >= 70:
+            risk_level = "CRITICAL"
+        elif risk_score >= 50:
+            risk_level = "HIGH"
+        elif risk_score >= 30:
+            risk_level = "MEDIUM"
+
+        return {
+            "success": True,
+            "timestamp": datetime.now().isoformat(),
+            "overall_risk": {
+                "score": risk_score,
+                "level": risk_level
+            },
+            "hlp_vault": {
+                "is_healthy": hlp_health.is_healthy if hlp_health else True,
+                "anomaly_score": hlp_health.anomaly_score if hlp_health else 0,
+                "account_value": hlp_health.account_value if hlp_health else 0,
+                "pnl_24h": hlp_health.pnl_24h if hlp_health else 0
+            },
+            "oracle_monitoring": {
+                "active_deviations": len(oracle_deviations),
+                "deviations": [d.to_dict() for d in oracle_deviations[:5]]
+            },
+            "recent_exploits": {
+                "count_24h": len([e for e in recent_exploits if (datetime.now() - e.get('timestamp', datetime.min)).days < 1]),
+                "total_loss_24h": sum(e.get('amount_usd', 0) for e in recent_exploits if (datetime.now() - e.get('timestamp', datetime.min)).days < 1),
+                "recent": recent_exploits[:5]
+            },
+            "monitoring_status": {
+                "hlp_monitor": "active",
+                "oracle_monitor": "active",
+                "liquidation_analyzer": "active"
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error generating security dashboard: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/security/hlp-vault")
+async def get_hlp_vault_health():
+    """
+    Get HLP vault health and anomaly detection
+
+    Returns:
+        Current HLP vault health metrics and risk assessment
+    """
+    try:
+        health = hlp_monitor.get_current_health()
+
+        if not health:
+            return {
+                "success": False,
+                "error": "Could not fetch HLP vault data"
+            }
+
+        return {
+            "success": True,
+            "timestamp": datetime.now().isoformat(),
+            "vault_address": health.vault_address,
+            "health_status": {
+                "is_healthy": health.is_healthy,
+                "anomaly_score": health.anomaly_score,
+                "health_issues": health.health_issues or []
+            },
+            "metrics": {
+                "total_value_locked": health.total_value_locked,
+                "account_value": health.account_value,
+                "pnl_24h": health.pnl_24h,
+                "pnl_7d": health.pnl_7d,
+                "pnl_30d": health.pnl_30d
+            },
+            "performance": {
+                "sharpe_ratio": health.sharpe_ratio,
+                "max_drawdown": health.max_drawdown,
+                "win_rate": health.win_rate
+            },
+            "risk_indicators": {
+                "volatility_score": health.volatility_score,
+                "loss_streak_score": health.loss_streak_score
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching HLP vault health: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/security/oracle-deviations")
+async def get_oracle_deviations(
+    active_only: bool = Query(default=True)
+):
+    """
+    Get oracle price deviations
+
+    Args:
+        active_only: Only return currently active deviations
+
+    Returns:
+        List of oracle price deviations
+    """
+    try:
+        if active_only:
+            deviations = oracle_monitor.get_current_deviations()
+        else:
+            # Get all recent deviations from all assets
+            deviations = []
+            for asset in ['BTC', 'ETH', 'SOL', 'MATIC', 'ARB', 'OP', 'AVAX']:
+                history = oracle_monitor.get_deviation_history(asset, limit=10)
+                deviations.extend(history)
+
+        return {
+            "success": True,
+            "timestamp": datetime.now().isoformat(),
+            "count": len(deviations),
+            "deviations": [d.to_dict() for d in deviations]
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching oracle deviations: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/security/events")
+async def get_security_events(
+    severity: Optional[str] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200)
+):
+    """
+    Get security events and alerts
+
+    Args:
+        severity: Filter by severity (critical, high, medium, low, info)
+        limit: Maximum number of events to return
+
+    Returns:
+        List of security events
+    """
+    try:
+        # For now, convert recent exploits to events format
+        # In production, would store actual SecurityEvent objects
+        exploits = exploit_cache.get('exploits', [])[:limit]
+
+        events = []
+        for exploit in exploits:
+            category = exploit.get('category', '')
+            exploit_severity = "medium"
+
+            # Determine severity based on amount and category
+            amount = exploit.get('amount_usd', 0)
+            if amount > 5_000_000 or 'critical' in category:
+                exploit_severity = "critical"
+            elif amount > 1_000_000 or 'high' in category:
+                exploit_severity = "high"
+            elif 'manipulation' in category or 'oracle' in category:
+                exploit_severity = "high"
+
+            # Filter by severity if specified
+            if severity and exploit_severity != severity.lower():
+                continue
+
+            event = {
+                "event_id": exploit.get('tx_hash'),
+                "timestamp": exploit.get('timestamp').isoformat() if isinstance(exploit.get('timestamp'), datetime) else exploit.get('timestamp'),
+                "severity": exploit_severity,
+                "threat_type": exploit.get('category', 'unknown'),
+                "title": f"{exploit.get('protocol', 'Hyperliquid')} - ${exploit.get('amount_usd', 0):,.0f} detected",
+                "description": exploit.get('description', ''),
+                "source": exploit.get('source', 'unknown')
+            }
+
+            events.append(event)
+
+        return {
+            "success": True,
+            "count": len(events),
+            "events": events
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching security events: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _calculate_overall_risk_score(hlp_health, oracle_deviations, recent_exploits) -> float:
+    """
+    Calculate overall risk score for the Hyperliquid ecosystem
+
+    Args:
+        hlp_health: HLP vault health snapshot
+        oracle_deviations: List of active oracle deviations
+        recent_exploits: List of recent exploits
+
+    Returns:
+        Risk score 0-100
+    """
+    score = 0.0
+
+    # HLP health component (0-40 points)
+    if hlp_health:
+        score += (hlp_health.anomaly_score / 100) * 40
+
+    # Oracle deviation component (0-30 points)
+    if oracle_deviations:
+        max_oracle_risk = max([d.risk_score for d in oracle_deviations], default=0)
+        score += (max_oracle_risk / 100) * 30
+
+    # Recent exploits component (0-30 points)
+    recent_24h = [e for e in recent_exploits if (datetime.now() - e.get('timestamp', datetime.min)).days < 1]
+    if recent_24h:
+        # More recent exploits = higher risk
+        score += min(30, len(recent_24h) * 10)
+
+    return min(100, score)
 
 
 if __name__ == "__main__":
