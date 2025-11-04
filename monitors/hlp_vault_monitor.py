@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
+from config.hyperliquid import HyperliquidConfig
 from models.security import (
     HLPVaultSnapshot,
     SecurityEvent,
@@ -42,8 +43,8 @@ class HLPVaultMonitor(BaseAggregator):
     - Suspicious withdrawal patterns
     """
 
-    HLP_VAULT_ADDRESS = "0xdfc24b077bc1425ad1dea75bcb6f8158e10df303"
-    API_URL = "https://api.hyperliquid.xyz/info"
+    HLP_VAULT_ADDRESS = HyperliquidConfig.HLP_MAIN_VAULT
+    API_URL = HyperliquidConfig.API_URL
 
     # Thresholds for anomaly detection
     CRITICAL_LOSS_1H = 2_000_000      # $2M loss in 1 hour = CRITICAL

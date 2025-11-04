@@ -7,6 +7,11 @@ Fetches liquidation and exploit data from the official Hyperliquid API
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 import json
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
+from config.hyperliquid import HyperliquidConfig
 from .base import BaseAggregator
 
 
@@ -56,11 +61,9 @@ class HyperliquidAPIAggregator(BaseAggregator):
         """
         liquidations = []
 
-        # Known high-value addresses to monitor (HLP vault, etc.)
-        # HLP vault address from Hyperliquid documentation
-        monitored_addresses = [
-            "0x3b9cf3e0fb59384cf8be808905d03c52ba3ba5b9",  # HLP vault (example)
-        ]
+        # Get monitored addresses from centralized configuration
+        # Includes HLP vault and any additional addresses from environment
+        monitored_addresses = HyperliquidConfig.get_monitored_addresses()
 
         for address in monitored_addresses:
             try:
