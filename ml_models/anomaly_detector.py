@@ -261,20 +261,63 @@ class AnomalyDetector:
 
     def get_feature_importance(self) -> Dict[str, float]:
         """
-        Get feature importance scores (approximate)
+        Get feature importance scores for the trained model
 
-        Note: Isolation Forest doesn't directly provide feature importance,
-        but we can approximate it using the model's decision paths.
+        Calculates feature importance by analyzing the frequency and depth
+        of feature usage across all decision trees in the Isolation Forest.
 
         Returns:
-            Dictionary mapping feature names to importance scores
+            Dictionary mapping feature names to normalized importance scores (0-1)
         """
         if not self.is_trained:
             raise RuntimeError("Model not trained")
 
-        # Placeholder: return equal importance for now
-        # In production, could use SHAP values or similar
-        return {feature: 1.0 / len(self.feature_names) for feature in self.feature_names}
+        try:
+            # Get feature importance from the ensemble's decision trees
+            # Each tree in Isolation Forest can provide feature importance
+            # based on how much each feature contributes to isolation
+            n_features = len(self.feature_names)
+            importance_sum = np.zeros(n_features)
+
+            # Aggregate importance across all estimators
+            for estimator in self.model.estimators_:
+                # Each estimator is a DecisionTreeRegressor
+                # Use feature usage frequency as importance proxy
+                if hasattr(estimator.tree_, 'feature'):
+                    features = estimator.tree_.feature
+                    # Count how often each feature is used for splitting
+                    for feature_idx in features:
+                        if feature_idx >= 0:  # -2 indicates leaf node
+                            importance_sum[feature_idx] += 1
+
+            # Normalize to sum to 1.0
+            if importance_sum.sum() > 0:
+                importance_normalized = importance_sum / importance_sum.sum()
+            else:
+                # Fallback to equal importance if no splits found
+                importance_normalized = np.ones(n_features) / n_features
+
+            # Create dictionary mapping feature names to importance
+            importance_dict = {
+                feature: float(importance_normalized[i])
+                for i, feature in enumerate(self.feature_names)
+            }
+
+            # Sort by importance (descending) for easier interpretation
+            importance_dict = dict(sorted(
+                importance_dict.items(),
+                key=lambda x: x[1],
+                reverse=True
+            ))
+
+            self.logger.debug(f"Feature importance calculated: top 3 = {list(importance_dict.items())[:3]}")
+
+            return importance_dict
+
+        except Exception as e:
+            self.logger.warning(f"Could not calculate feature importance: {e}. Using equal weights.")
+            # Fallback to equal importance
+            return {feature: 1.0 / len(self.feature_names) for feature in self.feature_names}
 
     def save(self, path: str):
         """

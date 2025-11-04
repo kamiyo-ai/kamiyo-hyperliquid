@@ -144,17 +144,24 @@ class TestAnomalyDetector:
         detector.train(sample_training_data)
         results = detector.predict(sample_test_data_with_anomalies)
 
-        # Get feature importance for the last anomalous point
-        last_idx = len(results) - 1
-        importance = detector.get_feature_importance(
-            sample_test_data_with_anomalies,
-            last_idx
-        )
+        # Get global feature importance from the model
+        importance = detector.get_feature_importance()
 
         assert isinstance(importance, dict)
         assert len(importance) == 3
+
+        # Check that all feature names are present
+        for feature in ['feature1', 'feature2', 'feature3']:
+            assert feature in importance
+
+        # Check that values are valid probabilities
         for feature_name, value in importance.items():
             assert isinstance(value, (int, float))
+            assert 0 <= value <= 1
+
+        # Check that importance values sum to approximately 1.0
+        total_importance = sum(importance.values())
+        assert abs(total_importance - 1.0) < 0.001
 
     def test_save_and_load_model(self, detector, sample_training_data):
         """Test model saving and loading"""
