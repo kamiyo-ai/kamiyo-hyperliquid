@@ -6,7 +6,7 @@ Focus: Extract anomalous events and potential exploits from historical liquidati
 """
 
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import csv
 import io
 from .base import BaseAggregator
@@ -113,7 +113,7 @@ class GitHubHistoricalAggregator(BaseAggregator):
             'chain': 'Hyperliquid',
             'protocol': 'Hyperliquid DEX',
             'amount_usd': total_amount,
-            'timestamp': self.parse_date(latest['time']) or datetime.now(),
+            'timestamp': self.parse_date(latest['time']) or datetime.now(timezone.utc),
             'source_url': f"{self.BASE_URL}/liquidations.csv",
             'category': 'mass_liquidation',
             'description': f"User {user[:10]}... experienced {len(liquidations)} liquidations totaling ${total_amount:,.2f} on {most_common_asset}",

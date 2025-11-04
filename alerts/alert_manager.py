@@ -8,7 +8,7 @@ import os
 import requests
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -146,7 +146,7 @@ class HyperliquidAlertManager:
             "title": f"{emojis[level]} {title}",
             "description": message,
             "color": colors[level],
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "footer": {
                 "text": "Hyperliquid Security Monitor"
             }
@@ -265,7 +265,7 @@ class HyperliquidAlertManager:
             for key, value in metadata.items():
                 text += f"• *{key}:* {value}\n"
 
-        text += f"\n_Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC_"
+        text += f"\n_Timestamp: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC_"
 
         # Send via Telegram Bot API
         url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
@@ -297,7 +297,7 @@ class HyperliquidAlertManager:
             "title": title,
             "message": message,
             "level": level.value,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "metadata": metadata or {},
             "source": "hyperliquid-monitor"
         }
@@ -340,7 +340,7 @@ class HyperliquidAlertManager:
                     content += f"<li><strong>{key}:</strong> {value}</li>"
                 content += "</ul>"
 
-            content += f"<p><em>Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC</em></p>"
+            content += f"<p><em>Timestamp: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC</em></p>"
 
             mail = Mail(
                 from_email=os.getenv('FROM_EMAIL', 'alerts@kamiyo.ai'),

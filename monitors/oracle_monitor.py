@@ -6,7 +6,7 @@ Detects price manipulation by comparing Hyperliquid oracle vs external sources
 
 import logging
 from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict, deque
 import hashlib
 
@@ -272,7 +272,7 @@ class OracleMonitor(BaseAggregator):
         duration_sec = 0.0
         if asset in self.active_deviations:
             prev_deviation = self.active_deviations[asset]
-            duration_sec = (datetime.now() - prev_deviation.timestamp).total_seconds()
+            duration_sec = (datetime.now(timezone.utc) - prev_deviation.timestamp).total_seconds()
 
         # Calculate risk score
         risk_score = self._calculate_oracle_risk_score(max_deviation, duration_sec)
@@ -284,7 +284,7 @@ class OracleMonitor(BaseAggregator):
         )
 
         deviation = OracleDeviation(
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             asset=asset,
             hyperliquid_price=hyperliquid_price,
             binance_price=binance_price,

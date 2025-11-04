@@ -6,7 +6,7 @@ Real-time monitoring and anomaly detection for Hyperliquid's HLP vault
 
 import logging
 from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import statistics
 import hashlib
 
@@ -22,6 +22,13 @@ from models.security import (
     ThreatType
 )
 from aggregators.base import BaseAggregator
+
+# Try to import ML models (optional)
+try:
+    from ml_models import get_model_manager, FeatureEngineer
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +55,27 @@ class HLPVaultMonitor(BaseAggregator):
         super().__init__("hlp_vault_monitor")
         self.historical_snapshots: List[HLPVaultSnapshot] = []
         self.last_alert_time: Dict[str, datetime] = {}
+
+        # Initialize ML models if available
+        self.ml_model_manager = None
+        self.ml_feature_engineer = None
+        self.ml_enabled = False
+
+        if ML_AVAILABLE:
+            try:
+                self.ml_model_manager = get_model_manager()
+                self.ml_feature_engineer = FeatureEngineer()
+                self.ml_model_manager.load_all_models()
+
+                # Check if models are actually loaded
+                if (self.ml_model_manager.anomaly_detector and
+                    self.ml_model_manager.anomaly_detector.is_trained):
+                    self.ml_enabled = True
+                    self.logger.info("ML anomaly detection enabled for HLP monitor")
+                else:
+                    self.logger.info("ML models not trained. Using rule-based detection only.")
+            except Exception as e:
+                self.logger.warning(f"ML models not loaded: {e}. Using rule-based detection only.")
 
     def fetch_exploits(self) -> List[Dict[str, Any]]:
         """
@@ -162,7 +190,7 @@ class HLPVaultMonitor(BaseAggregator):
 
         # Create snapshot
         snapshot = HLPVaultSnapshot(
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             vault_address=self.HLP_VAULT_ADDRESS,
             total_value_locked=account_value,  # Simplified
             account_value=account_value,
@@ -182,7 +210,7 @@ class HLPVaultMonitor(BaseAggregator):
             return 0.0
 
         try:
-            cutoff_time = datetime.now() - timedelta(hours=hours)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
 
             # Find values at start and end of period
             current_value = float(portfolio[-1].get('accountValue', 0))
@@ -263,6 +291,7 @@ class HLPVaultMonitor(BaseAggregator):
     def _detect_anomalies(self, snapshot: HLPVaultSnapshot) -> List[SecurityEvent]:
         """
         Analyze snapshot for anomalies and generate security events
+        Uses both rule-based and ML-based detection (if available)
 
         Args:
             snapshot: Current vault snapshot
@@ -271,6 +300,20 @@ class HLPVaultMonitor(BaseAggregator):
             List of detected security events
         """
         events = []
+
+        # ML-based anomaly detection (if enabled and enough data)
+        ml_anomaly_score = None
+        if self.ml_enabled and len(self.historical_snapshots) >= 10:
+            try:
+                ml_event = self._detect_ml_anomaly(snapshot)
+                if ml_event:
+                    events.append(ml_event)
+                    # Store ML score for later use
+                    ml_anomaly_score = ml_event.indicators.get('ml_anomaly_score', 0)
+            except Exception as e:
+                self.logger.warning(f"ML anomaly detection failed: {e}")
+
+        # Rule-based detection (always runs as fallback)
 
         # Check for large losses in short period
         if snapshot.pnl_24h < -self.CRITICAL_LOSS_1H:
@@ -291,8 +334,8 @@ class HLPVaultMonitor(BaseAggregator):
             if anomaly_event:
                 events.append(anomaly_event)
 
-        # Calculate overall anomaly score
-        snapshot.anomaly_score = self._calculate_anomaly_score(snapshot)
+        # Calculate overall anomaly score (blends rule-based + ML)
+        snapshot.anomaly_score = self._calculate_anomaly_score(snapshot, ml_score=ml_anomaly_score)
         if snapshot.anomaly_score > 70:
             snapshot.is_healthy = False
             snapshot.health_issues = ["High anomaly score detected"]
@@ -360,6 +403,96 @@ class HLPVaultMonitor(BaseAggregator):
             source="hlp_vault_monitor"
         )
 
+    def _detect_ml_anomaly(self, snapshot: HLPVaultSnapshot) -> Optional[SecurityEvent]:
+        """
+        Use ML model to detect anomalies
+
+        Args:
+            snapshot: Current vault snapshot
+
+        Returns:
+            Security event if ML detects anomaly, None otherwise
+        """
+        if not self.ml_enabled or not self.ml_feature_engineer:
+            return None
+
+        try:
+            # Prepare snapshot data for feature extraction
+            snapshot_data = [{
+                'timestamp': snapshot.timestamp,
+                'account_value': snapshot.account_value,
+                'pnl_24h': snapshot.pnl_24h,
+                'pnl_7d': snapshot.pnl_7d,
+                'pnl_30d': snapshot.pnl_30d,
+                'sharpe_ratio': snapshot.sharpe_ratio,
+                'max_drawdown': snapshot.max_drawdown,
+                'anomaly_score': snapshot.anomaly_score,
+                'is_healthy': snapshot.is_healthy
+            }]
+
+            # Extract features
+            features_df = self.ml_feature_engineer.extract_hlp_features(snapshot_data)
+
+            if features_df.empty:
+                self.logger.debug("Not enough data for ML feature extraction")
+                return None
+
+            # Get ML prediction
+            predictions = self.ml_model_manager.anomaly_detector.predict(features_df)
+
+            if not predictions or len(predictions) == 0:
+                return None
+
+            prediction = predictions[0]
+
+            # Only create event if ML detected anomaly with high confidence
+            if prediction.get('is_anomaly') and prediction.get('anomaly_score', 0) > 70:
+                event_id = self._generate_event_id("ml_anomaly", snapshot.timestamp)
+
+                # Determine severity based on ML score
+                ml_score = prediction['anomaly_score']
+                if ml_score > 90:
+                    severity = ThreatSeverity.CRITICAL
+                elif ml_score > 80:
+                    severity = ThreatSeverity.HIGH
+                else:
+                    severity = ThreatSeverity.MEDIUM
+
+                # Get contributing features
+                contributing_features = prediction.get('contributing_features', [])
+                top_features = contributing_features[:3] if contributing_features else []
+
+                return SecurityEvent(
+                    event_id=event_id,
+                    timestamp=snapshot.timestamp,
+                    severity=severity,
+                    threat_type=ThreatType.HLP_EXPLOITATION,
+                    title=f"ML Anomaly Detected: {ml_score:.1f}/100 confidence",
+                    description=(
+                        f"Machine learning model detected unusual patterns in HLP vault behavior. "
+                        f"Anomaly score: {ml_score:.1f}/100. "
+                        f"This may indicate exploitation, market manipulation, or unusual market conditions."
+                    ),
+                    affected_assets=["HLP"],
+                    indicators={
+                        'ml_anomaly_score': ml_score,
+                        'top_features': [f['feature'] for f in top_features],
+                        'pnl_24h': snapshot.pnl_24h,
+                        'account_value': snapshot.account_value,
+                        'max_drawdown': snapshot.max_drawdown
+                    },
+                    recommended_action=(
+                        f"ML-detected anomaly. Investigate: {', '.join([f['feature'] for f in top_features])}. "
+                        f"Cross-check with rule-based alerts and market conditions."
+                    ),
+                    source="hlp_vault_monitor_ml"
+                )
+
+        except Exception as e:
+            self.logger.error(f"Error in ML anomaly detection: {e}", exc_info=True)
+
+        return None
+
     def _check_statistical_anomaly(self, snapshot: HLPVaultSnapshot) -> Optional[SecurityEvent]:
         """Check for statistical anomalies using historical data"""
         try:
@@ -408,23 +541,30 @@ class HLPVaultMonitor(BaseAggregator):
 
         return None
 
-    def _calculate_anomaly_score(self, snapshot: HLPVaultSnapshot) -> float:
+    def _calculate_anomaly_score(self, snapshot: HLPVaultSnapshot, ml_score: Optional[float] = None) -> float:
         """
         Calculate overall anomaly score (0-100)
+        Blends rule-based and ML scores when available
 
-        Higher score = more suspicious
+        Args:
+            snapshot: Current vault snapshot
+            ml_score: Optional ML anomaly score (0-100)
+
+        Returns:
+            Combined anomaly score (0-100)
         """
-        score = 0.0
+        # Rule-based score (0-100)
+        rule_score = 0.0
 
         # Large loss component (0-40 points)
         if snapshot.pnl_24h < 0:
             loss_ratio = abs(snapshot.pnl_24h) / self.CRITICAL_LOSS_1H
-            score += min(40, loss_ratio * 40)
+            rule_score += min(40, loss_ratio * 40)
 
         # Drawdown component (0-30 points)
         if snapshot.max_drawdown:
             drawdown_ratio = snapshot.max_drawdown / self.DRAWDOWN_CRITICAL_PCT
-            score += min(30, drawdown_ratio * 30)
+            rule_score += min(30, drawdown_ratio * 30)
 
         # Volatility component (0-30 points)
         if len(self.historical_snapshots) >= 10:
@@ -434,9 +574,18 @@ class HLPVaultMonitor(BaseAggregator):
             if avg_volatility > 0:
                 current_volatility = abs(snapshot.pnl_24h)
                 volatility_ratio = current_volatility / (avg_volatility * 2)
-                score += min(30, volatility_ratio * 30)
+                rule_score += min(30, volatility_ratio * 30)
 
-        return min(100, score)
+        rule_score = min(100, rule_score)
+
+        # Blend with ML score if available (70% rule-based, 30% ML)
+        # This ensures rule-based detection remains primary with ML as enhancement
+        if ml_score is not None and self.ml_enabled:
+            final_score = (0.7 * rule_score) + (0.3 * ml_score)
+            self.logger.debug(f"Blended score: rule={rule_score:.1f}, ml={ml_score:.1f}, final={final_score:.1f}")
+            return min(100, final_score)
+
+        return rule_score
 
     def _event_to_exploit(self, event: SecurityEvent) -> Dict[str, Any]:
         """Convert security event to exploit format for KAMIYO aggregation"""

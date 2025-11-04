@@ -6,7 +6,7 @@ All exploit aggregators inherit from this class
 
 from abc import ABC, abstractmethod
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import hashlib
 from typing import List, Dict, Any, Optional
@@ -64,7 +64,7 @@ class BaseAggregator(ABC):
             'chain': raw_data.get('chain'),
             'protocol': raw_data.get('protocol'),
             'amount_usd': float(raw_data.get('amount_usd', 0)),
-            'timestamp': raw_data.get('timestamp', datetime.now()),
+            'timestamp': raw_data.get('timestamp', datetime.now(timezone.utc)),
             'source': self.name,
             'source_url': raw_data.get('source_url'),
             'category': raw_data.get('category'),

@@ -33,6 +33,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Import ML models (after logger initialization)
+try:
+    from ml_models import get_model_manager, FeatureEngineer
+    ML_AVAILABLE = True
+except ImportError:
+    logger.warning("ML models not available. Install ML dependencies: pip install scikit-learn statsmodels pandas")
+    ML_AVAILABLE = False
+
 # Initialize rate limiter
 # Default: 60 requests per minute per IP
 # Can be overridden with RATE_LIMIT environment variable
@@ -77,6 +85,22 @@ try:
 except Exception as e:
     logger.warning(f"Database integration disabled: {e}")
     db_integration = None
+
+# Initialize ML models
+ml_model_manager = None
+ml_feature_engineer = None
+
+if ML_AVAILABLE:
+    try:
+        ml_model_manager = get_model_manager()
+        ml_feature_engineer = FeatureEngineer()
+
+        # Try to load pre-trained models
+        ml_model_manager.load_all_models()
+        logger.info("ML models loaded successfully")
+    except Exception as e:
+        logger.warning(f"ML models not loaded: {e}")
+        logger.info("Train models with: python scripts/train_ml_models.py")
 
 # In-memory cache (replace with Redis in production)
 exploit_cache = {
@@ -146,7 +170,9 @@ async def root(request: Request):
             "Real-time Security Alerts",
             "Database Persistence",
             "WebSocket Real-time Monitoring",
-            "Multi-channel Alert System"
+            "Multi-channel Alert System",
+            "ML-Powered Anomaly Detection",
+            "Predictive Risk Forecasting"
         ],
         "endpoints": {
             "core": {
@@ -164,6 +190,12 @@ async def root(request: Request):
                 "/security/liquidation-patterns": "Detected liquidation patterns",
                 "/security/events": "Security events and alerts",
                 "/security/events/database": "Security events from database"
+            },
+            "ml": {
+                "/ml/status": "ML model availability and status",
+                "/ml/anomalies": "Detect anomalies using ML (requires trained models)",
+                "/ml/forecast": "24-hour risk prediction using ARIMA",
+                "/ml/features": "View extracted ML features from monitoring data"
             }
         },
         "documentation": "https://github.com/kamiyo/kamiyo-hyperliquid"
@@ -899,6 +931,250 @@ async def get_database_security_events(
         logger.error(f"Error fetching database security events: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error while fetching database security events")
 
+
+# ============================================================================
+# MACHINE LEARNING ENDPOINTS
+# ============================================================================
+
+@app.get("/ml/status")
+@limiter.limit("60/minute")
+async def get_ml_status(request: Request):
+    """
+    Get ML model status
+
+    Returns:
+        Status of ML models (loaded, trained, etc.)
+    """
+    if not ML_AVAILABLE:
+        return {
+            "success": False,
+            "ml_available": False,
+            "message": "ML dependencies not installed"
+        }
+
+    try:
+        status = {
+            "success": True,
+            "ml_available": ML_AVAILABLE,
+            "models": {}
+        }
+
+        if ml_model_manager:
+            active_models = ml_model_manager.get_active_models()
+            status["models"] = active_models
+
+        return status
+
+    except Exception as e:
+        logger.error(f"Error getting ML status: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error while getting ML status")
+
+
+@app.get("/ml/anomalies")
+@limiter.limit("30/minute")
+async def get_ml_anomalies(
+    request: Request,
+    limit: int = Query(default=10, ge=1, le=100),
+    api_key: Optional[str] = Depends(get_api_key)
+):
+    """
+    Get recent anomalies detected by ML model
+
+    Args:
+        limit: Maximum number of anomalies to return
+
+    Returns:
+        List of detected anomalies with scores and contributing features
+    """
+    if not ML_AVAILABLE or not ml_model_manager or not ml_model_manager.anomaly_detector:
+        raise HTTPException(
+            status_code=503,
+            detail="ML anomaly detector not available. Train model first: python scripts/train_ml_models.py"
+        )
+
+    try:
+        # Get recent HLP snapshots
+        hlp_snapshots = hlp_monitor.get_historical_snapshots(limit=limit * 2)
+
+        if not hlp_snapshots:
+            return {
+                "success": True,
+                "anomalies": [],
+                "message": "No recent data available for anomaly detection"
+            }
+
+        # Convert snapshots to dict format for feature extraction
+        snapshot_data = [
+            {
+                'timestamp': s.timestamp,
+                'account_value': s.account_value,
+                'pnl_24h': s.pnl_24h,
+                'all_time_pnl': s.all_time_pnl,
+                'sharpe_ratio': s.sharpe_ratio,
+                'max_drawdown': s.max_drawdown,
+                'anomaly_score': s.anomaly_score
+            }
+            for s in hlp_snapshots
+        ]
+
+        # Extract features
+        features = ml_feature_engineer.extract_hlp_features(snapshot_data)
+
+        if features.empty:
+            return {
+                "success": True,
+                "anomalies": [],
+                "message": "Insufficient data for anomaly detection"
+            }
+
+        # Detect anomalies
+        anomalies = ml_model_manager.anomaly_detector.predict(features)
+
+        # Filter for actual anomalies and apply limit
+        detected_anomalies = [a for a in anomalies if a['is_anomaly']][:limit]
+
+        return {
+            "success": True,
+            "count": len(detected_anomalies),
+            "anomalies": detected_anomalies,
+            "model_info": {
+                "model_type": "Isolation Forest",
+                "features_used": len(ml_model_manager.anomaly_detector.feature_names)
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error detecting anomalies: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error while detecting anomalies")
+
+
+@app.get("/ml/forecast")
+@limiter.limit("30/minute")
+async def get_ml_forecast(
+    request: Request,
+    hours: int = Query(default=24, ge=1, le=168),
+    api_key: Optional[str] = Depends(get_api_key)
+):
+    """
+    Get risk forecast for next N hours
+
+    Args:
+        hours: Number of hours to forecast (default 24, max 168/7 days)
+
+    Returns:
+        Forecasted risk scores with confidence intervals
+    """
+    if not ML_AVAILABLE or not ml_model_manager or not ml_model_manager.risk_predictor:
+        raise HTTPException(
+            status_code=503,
+            detail="ML risk predictor not available. Train model first: python scripts/train_ml_models.py"
+        )
+
+    try:
+        # Generate forecast
+        forecast = ml_model_manager.risk_predictor.predict(steps=hours)
+
+        if not forecast:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate forecast"
+            )
+
+        return {
+            "success": True,
+            "forecast": forecast,
+            "model_info": {
+                "model_type": "ARIMA",
+                "order": ml_model_manager.risk_predictor.order,
+                "horizon_hours": hours
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating forecast: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error while generating forecast")
+
+
+@app.get("/ml/features")
+@limiter.limit("60/minute")
+async def get_ml_features(
+    request: Request,
+    limit: int = Query(default=10, ge=1, le=100),
+    api_key: Optional[str] = Depends(get_api_key)
+):
+    """
+    Get extracted ML features for recent monitoring data
+
+    Args:
+        limit: Number of recent samples to extract features from
+
+    Returns:
+        Extracted features for recent monitoring data
+    """
+    if not ML_AVAILABLE or not ml_feature_engineer:
+        raise HTTPException(
+            status_code=503,
+            detail="ML feature engineer not available"
+        )
+
+    try:
+        # Get current snapshot to demonstrate feature extraction
+        current_snapshot = hlp_monitor.get_current_health()
+
+        if not current_snapshot:
+            return {
+                "success": True,
+                "features": [],
+                "message": "No current data available to extract features from"
+            }
+
+        # Convert to dict format for feature extraction
+        snapshot_data = [{
+            'timestamp': current_snapshot.timestamp,
+            'account_value': current_snapshot.account_value,
+            'pnl_24h': current_snapshot.pnl_24h,
+            'pnl_7d': current_snapshot.pnl_7d,
+            'pnl_30d': current_snapshot.pnl_30d,
+            'sharpe_ratio': current_snapshot.sharpe_ratio,
+            'max_drawdown': current_snapshot.max_drawdown,
+            'anomaly_score': current_snapshot.anomaly_score,
+            'is_healthy': current_snapshot.is_healthy
+        }]
+
+        # Extract features
+        features_df = ml_feature_engineer.extract_hlp_features(snapshot_data)
+
+        if features_df.empty:
+            return {
+                "success": False,
+                "features": [],
+                "message": "Could not extract features from current snapshot (requires more historical data)"
+            }
+
+        # Convert to list of dicts
+        features_list = features_df.to_dict('records')
+
+        return {
+            "success": True,
+            "count": len(features_list),
+            "features": features_list,
+            "feature_names": list(features_df.columns),
+            "note": "Showing features from current snapshot. For historical features, train models with historical data first."
+        }
+
+    except Exception as e:
+        logger.error(f"Error extracting features: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail="Feature extraction not available. Requires historical data collection."
+        )
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
 
 def _calculate_overall_risk_score(hlp_health, oracle_deviations, recent_exploits) -> float:
     """

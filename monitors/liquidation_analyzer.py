@@ -6,7 +6,7 @@ Detects suspicious liquidation patterns that may indicate exploits
 
 import logging
 from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 import hashlib
 
@@ -205,7 +205,7 @@ class LiquidationAnalyzer(BaseAggregator):
         try:
             # Extract relevant fields
             timestamp_ms = fill.get('time', 0)
-            timestamp = datetime.fromtimestamp(timestamp_ms / 1000) if timestamp_ms else datetime.now()
+            timestamp = datetime.fromtimestamp(timestamp_ms / 1000) if timestamp_ms else datetime.now(timezone.utc)
 
             return {
                 'liquidation_id': f"liq-{fill.get('oid', 'unknown')}",
@@ -230,7 +230,7 @@ class LiquidationAnalyzer(BaseAggregator):
 
     def _cleanup_old_liquidations(self):
         """Remove liquidations older than 1 hour"""
-        cutoff = datetime.now() - timedelta(hours=1)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
 
         self.recent_liquidations = [
             liq for liq in self.recent_liquidations
@@ -374,7 +374,7 @@ class LiquidationAnalyzer(BaseAggregator):
         buckets = defaultdict(list)
 
         for liq in liquidations:
-            timestamp = liq.get('timestamp', datetime.now())
+            timestamp = liq.get('timestamp', datetime.now(timezone.utc))
 
             # Round to window
             window_key = datetime.fromtimestamp(
@@ -400,7 +400,7 @@ class LiquidationAnalyzer(BaseAggregator):
 
         # Check time window
         first_time = sorted_liquidations[0].get('timestamp', datetime.min)
-        last_time = sorted_liquidations[-1].get('timestamp', datetime.now())
+        last_time = sorted_liquidations[-1].get('timestamp', datetime.now(timezone.utc))
 
         time_diff = (last_time - first_time).total_seconds()
         if time_diff > self.CASCADE_WINDOW_SEC:
@@ -495,8 +495,8 @@ class LiquidationAnalyzer(BaseAggregator):
         total_usd = sum(liq.get('amount_usd', 0) for liq in liquidations)
         users = set(liq.get('user') for liq in liquidations if liq.get('user'))
 
-        first_time = liquidations[0].get('timestamp', datetime.now())
-        last_time = liquidations[-1].get('timestamp', datetime.now())
+        first_time = liquidations[0].get('timestamp', datetime.now(timezone.utc))
+        last_time = liquidations[-1].get('timestamp', datetime.now(timezone.utc))
         duration = (last_time - first_time).total_seconds()
 
         # Calculate price impact
@@ -543,8 +543,8 @@ class LiquidationAnalyzer(BaseAggregator):
         total_usd = sum(liq.get('amount_usd', 0) for liq in liquidations)
         assets = list(set(liq.get('asset') for liq in liquidations if liq.get('asset')))
 
-        first_time = min(liq.get('timestamp', datetime.now()) for liq in liquidations)
-        last_time = max(liq.get('timestamp', datetime.now()) for liq in liquidations)
+        first_time = min(liq.get('timestamp', datetime.now(timezone.utc)) for liq in liquidations)
+        last_time = max(liq.get('timestamp', datetime.now(timezone.utc)) for liq in liquidations)
         duration = (last_time - first_time).total_seconds()
 
         suspicion_score = self._calculate_coordinated_suspicion(len(liquidations), total_usd)

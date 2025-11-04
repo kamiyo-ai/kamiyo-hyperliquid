@@ -15,7 +15,7 @@ Components:
 from ml_models.anomaly_detector import AnomalyDetector
 from ml_models.risk_predictor import RiskPredictor
 from ml_models.feature_engineering import FeatureEngineer
-from ml_models.model_manager import ModelManager
+from ml_models.model_manager import ModelManager, get_model_manager
 
 __version__ = "1.0.0"
 
@@ -24,4 +24,5 @@ __all__ = [
     "RiskPredictor",
     "FeatureEngineer",
     "ModelManager",
+    "get_model_manager",
 ]
