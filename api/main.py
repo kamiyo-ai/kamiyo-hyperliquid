@@ -1028,10 +1028,10 @@ async def get_ml_anomalies(
             }
 
         # Detect anomalies
-        anomalies = ml_model_manager.anomaly_detector.predict(features)
+        anomalies_df = ml_model_manager.anomaly_detector.predict(features)
 
         # Filter for actual anomalies and apply limit
-        detected_anomalies = [a for a in anomalies if a['is_anomaly']][:limit]
+        detected_anomalies = anomalies_df[anomalies_df['is_anomaly'] == True].head(limit).to_dict('records')
 
         return {
             "success": True,

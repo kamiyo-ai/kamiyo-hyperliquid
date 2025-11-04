@@ -440,10 +440,10 @@ class HLPVaultMonitor(BaseAggregator):
             # Get ML prediction
             predictions = self.ml_model_manager.anomaly_detector.predict(features_df)
 
-            if not predictions or len(predictions) == 0:
+            if predictions.empty:
                 return None
 
-            prediction = predictions[0]
+            prediction = predictions.iloc[0].to_dict()
 
             # Only create event if ML detected anomaly with high confidence
             if prediction.get('is_anomaly') and prediction.get('anomaly_score', 0) > 70:

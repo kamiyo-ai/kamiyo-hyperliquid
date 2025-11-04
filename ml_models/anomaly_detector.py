@@ -122,7 +122,7 @@ class AnomalyDetector:
             self.logger.error(f"Error training anomaly detector: {e}")
             raise
 
-    def predict(self, features: pd.DataFrame) -> List[Dict[str, Any]]:
+    def predict(self, features: pd.DataFrame) -> pd.DataFrame:
         """
         Predict anomalies on new data
 
@@ -130,13 +130,13 @@ class AnomalyDetector:
             features: DataFrame with extracted features
 
         Returns:
-            List of anomaly predictions with scores and details
+            DataFrame with anomaly predictions, scores, and details
         """
         if not self.is_trained:
             raise RuntimeError("Model not trained. Call train() first.")
 
         if features.empty:
-            return []
+            return pd.DataFrame()
 
         try:
             # Select same features used in training
@@ -181,11 +181,12 @@ class AnomalyDetector:
 
             self.logger.info(f"Detected {sum(r['is_anomaly'] for r in results)} anomalies in {len(results)} samples")
 
-            return results
+            # Convert to DataFrame
+            return pd.DataFrame(results)
 
         except Exception as e:
             self.logger.error(f"Error predicting anomalies: {e}")
-            return []
+            return pd.DataFrame()
 
     def _normalize_scores(self, scores: np.ndarray) -> np.ndarray:
         """

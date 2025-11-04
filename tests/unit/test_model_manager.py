@@ -30,7 +30,7 @@ class TestModelManager:
     @pytest.fixture
     def manager(self, temp_models_dir):
         """Create a ModelManager instance with temporary directory"""
-        return ModelManager(models_dir=str(temp_models_dir))
+        return ModelManager(model_dir=str(temp_models_dir))
 
     @pytest.fixture
     def sample_model_metadata(self):
