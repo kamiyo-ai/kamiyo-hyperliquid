@@ -25,6 +25,11 @@ from aggregators import HyperliquidAPIAggregator, GitHubHistoricalAggregator
 from monitors import HLPVaultMonitor, LiquidationAnalyzer, OracleMonitor
 from database.integration import get_db_integration
 from api.auth import get_api_key, AuthenticationStatus
+from api.observability import (
+    health_checker, get_metrics_summary,
+    api_requests_total, api_request_duration,
+    exploits_detected_total, StructuredLogger
+)
 
 # Configure logging
 logging.basicConfig(
@@ -1206,6 +1211,118 @@ def _calculate_overall_risk_score(hlp_health, oracle_deviations, recent_exploits
         score += min(30, len(recent_24h) * 10)
 
     return min(100, score)
+
+
+# ===== Observability Endpoints =====
+
+@app.get("/health", tags=["Observability"])
+async def health_check():
+    """
+    System health check endpoint
+
+    Returns health status of all components:
+    - API server
+    - Database connection
+    - Monitor health
+    - ML models (if available)
+    """
+    health_status = health_checker.check_health()
+
+    # Add additional checks
+    health_status['components']['api'] = {
+        'healthy': True,
+        'uptime_seconds': int((datetime.now(timezone.utc) - app.state.start_time).total_seconds())
+            if hasattr(app.state, 'start_time') else 0
+    }
+
+    # Database check
+    try:
+        db = get_db_integration()
+        health_status['components']['database'] = {
+            'healthy': True,
+            'type': 'sqlite' if 'sqlite' in str(db) else 'unknown'
+        }
+    except Exception as e:
+        health_status['components']['database'] = {
+            'healthy': False,
+            'error': str(e)
+        }
+
+    # ML models check
+    if ML_AVAILABLE:
+        try:
+            model_manager = get_model_manager()
+            health_status['components']['ml_models'] = {
+                'healthy': True,
+                'anomaly_detector': model_manager.has_trained_model('anomaly_detector'),
+                'risk_predictor': model_manager.has_trained_model('risk_predictor')
+            }
+        except Exception as e:
+            health_status['components']['ml_models'] = {
+                'healthy': False,
+                'error': str(e)
+            }
+    else:
+        health_status['components']['ml_models'] = {
+            'healthy': True,
+            'available': False,
+            'note': 'ML dependencies not installed'
+        }
+
+    status_code = 200 if health_status['healthy'] else 503
+    return health_status
+
+
+@app.get("/metrics", tags=["Observability"])
+async def metrics():
+    """
+    Prometheus-compatible metrics endpoint
+
+    Returns metrics in Prometheus text format if prometheus_client is installed,
+    otherwise returns JSON summary.
+    """
+    try:
+        from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+        from fastapi.responses import Response
+
+        # Return Prometheus format
+        return Response(
+            content=generate_latest(),
+            media_type=CONTENT_TYPE_LATEST
+        )
+    except ImportError:
+        # Fallback to JSON summary
+        return {
+            'note': 'Install prometheus_client for Prometheus format metrics',
+            'metrics_summary': get_metrics_summary()
+        }
+
+
+@app.get("/metrics/summary", tags=["Observability"])
+async def metrics_summary():
+    """
+    Human-readable metrics summary
+
+    Returns:
+        JSON summary of key metrics
+    """
+    return get_metrics_summary()
+
+
+# ===== Startup Event =====
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize observability on startup"""
+    app.state.start_time = datetime.now(timezone.utc)
+
+    # Register health checks
+    health_checker.register_component('startup', lambda: {
+        'healthy': True,
+        'started_at': app.state.start_time.isoformat()
+    })
+
+    logger.info("KAMIYO API started with observability enabled")
 
 
 if __name__ == "__main__":
