@@ -20,7 +20,7 @@ class HyperliquidAPIAggregator(BaseAggregator):
         super().__init__("hyperliquid_api")
         self.base_url = self.TESTNET_URL if use_testnet else self.MAINNET_URL
 
-    def fetch_exploits(self) -> List[Dict[str, Any]]:
+    async def fetch_exploits(self) -> List[Dict[str, Any]]:
         """
         Fetch exploits related to Hyperliquid
         This monitors for anomalous liquidations and potential exploits
@@ -29,7 +29,7 @@ class HyperliquidAPIAggregator(BaseAggregator):
 
         try:
             # Monitor for unusual liquidation patterns that might indicate exploits
-            large_liquidations = self._fetch_large_liquidations()
+            large_liquidations = await self._fetch_large_liquidations()
 
             for liq in large_liquidations:
                 exploit_data = self._analyze_for_exploit(liq)
@@ -45,7 +45,7 @@ class HyperliquidAPIAggregator(BaseAggregator):
 
         return exploits
 
-    def _fetch_large_liquidations(self) -> List[Dict[str, Any]]:
+    async def _fetch_large_liquidations(self) -> List[Dict[str, Any]]:
         """
         Fetch large liquidations that might indicate exploits
         Returns list of liquidation data
@@ -70,7 +70,7 @@ class HyperliquidAPIAggregator(BaseAggregator):
                     "user": address
                 }
 
-                response = self.make_request(
+                response = await self.make_request(
                     self.base_url,
                     method='POST',
                     json=payload,
@@ -135,7 +135,7 @@ class HyperliquidAPIAggregator(BaseAggregator):
 
         return None
 
-    def get_meta(self) -> Dict[str, Any]:
+    async def get_meta(self) -> Dict[str, Any]:
         """
         Get metadata about available assets on Hyperliquid
 
@@ -144,7 +144,7 @@ class HyperliquidAPIAggregator(BaseAggregator):
         """
         payload = {"type": "meta"}
 
-        response = self.make_request(
+        response = await self.make_request(
             self.base_url,
             method='POST',
             json=payload,
@@ -160,7 +160,7 @@ class HyperliquidAPIAggregator(BaseAggregator):
             self.logger.error("Failed to parse meta response")
             return {}
 
-    def get_all_mids(self) -> Dict[str, float]:
+    async def get_all_mids(self) -> Dict[str, float]:
         """
         Get current mid prices for all assets
 
@@ -169,7 +169,7 @@ class HyperliquidAPIAggregator(BaseAggregator):
         """
         payload = {"type": "allMids"}
 
-        response = self.make_request(
+        response = await self.make_request(
             self.base_url,
             method='POST',
             json=payload,

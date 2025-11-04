@@ -5,7 +5,7 @@ All exploit aggregators inherit from this class
 """
 
 from abc import ABC, abstractmethod
-import requests
+import httpx
 from datetime import datetime, timezone
 import logging
 import hashlib
@@ -21,32 +21,44 @@ class BaseAggregator(ABC):
         """Initialize aggregator"""
         self.name = name
         self.logger = logging.getLogger(f"aggregator.{name}")
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'KAMIYO Exploit Aggregator/1.0'
-        })
+        self._client: Optional[httpx.AsyncClient] = None
 
-    def __enter__(self):
-        """Context manager entry"""
+    async def __aenter__(self):
+        """Async context manager entry"""
+        await self._ensure_client()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit - cleanup resources"""
-        self.close()
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit - cleanup resources"""
+        await self.close()
         return False
 
-    def close(self):
-        """Close the HTTP session and cleanup resources"""
-        if hasattr(self, 'session') and self.session:
-            self.session.close()
-            self.logger.debug(f"Closed session for {self.name}")
+    async def _ensure_client(self):
+        """Ensure the httpx client is initialized"""
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                headers={'User-Agent': 'KAMIYO Exploit Aggregator/1.0'},
+                timeout=30.0
+            )
+
+    async def close(self):
+        """Close the HTTP client and cleanup resources"""
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+            self.logger.debug(f"Closed client for {self.name}")
 
     def __del__(self):
-        """Destructor - ensure session is closed"""
-        self.close()
+        """Destructor - ensure client is closed"""
+        if self._client is not None:
+            try:
+                import asyncio
+                asyncio.get_event_loop().run_until_complete(self.close())
+            except Exception:
+                pass
 
     @abstractmethod
-    def fetch_exploits(self) -> List[Dict[str, Any]]:
+    async def fetch_exploits(self) -> List[Dict[str, Any]]:
         """
         Fetch exploits from source
         Returns list of exploits in standard format
@@ -170,33 +182,35 @@ class BaseAggregator(ABC):
 
         return None
 
-    def make_request(
+    async def make_request(
         self,
         url: str,
         method: str = 'GET',
         timeout: int = 30,
         **kwargs
-    ) -> Optional[requests.Response]:
+    ) -> Optional[httpx.Response]:
         """
         Make HTTP request with error handling
         Returns Response object or None on failure
         """
+        await self._ensure_client()
+
         try:
             if method.upper() == 'GET':
-                response = self.session.get(url, timeout=timeout, **kwargs)
+                response = await self._client.get(url, timeout=timeout, **kwargs)
             elif method.upper() == 'POST':
-                response = self.session.post(url, timeout=timeout, **kwargs)
+                response = await self._client.post(url, timeout=timeout, **kwargs)
             else:
                 raise ValueError(f"Unsupported method: {method}")
 
             response.raise_for_status()
             return response
 
-        except requests.exceptions.Timeout:
+        except httpx.TimeoutException:
             self.logger.error(f"Request timeout: {url}")
-        except requests.exceptions.ConnectionError:
+        except httpx.ConnectError:
             self.logger.error(f"Connection error: {url}")
-        except requests.exceptions.HTTPError as e:
+        except httpx.HTTPStatusError as e:
             self.logger.error(f"HTTP error {e.response.status_code}: {url}")
         except Exception as e:
             self.logger.error(f"Request failed: {e}")

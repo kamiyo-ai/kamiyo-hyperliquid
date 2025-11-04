@@ -359,8 +359,8 @@ async def get_metadata(request: Request):
         Metadata from Hyperliquid API
     """
     try:
-        meta = hyperliquid_agg.get_meta()
-        mids = hyperliquid_agg.get_all_mids()
+        meta = await hyperliquid_agg.get_meta()
+        mids = await hyperliquid_agg.get_all_mids()
 
         return {
             "success": True,
@@ -384,7 +384,7 @@ async def _fetch_all_exploits() -> List[Dict[str, Any]]:
 
     # Fetch from Hyperliquid API
     try:
-        hyperliquid_exploits = hyperliquid_agg.fetch_exploits()
+        hyperliquid_exploits = await hyperliquid_agg.fetch_exploits()
         all_exploits.extend(hyperliquid_exploits)
         logger.info(f"Fetched {len(hyperliquid_exploits)} exploits from Hyperliquid API")
     except Exception as e:
@@ -392,7 +392,7 @@ async def _fetch_all_exploits() -> List[Dict[str, Any]]:
 
     # Fetch from GitHub historical data
     try:
-        github_exploits = github_agg.fetch_exploits()
+        github_exploits = await github_agg.fetch_exploits()
         all_exploits.extend(github_exploits)
         logger.info(f"Fetched {len(github_exploits)} exploits from GitHub historical data")
     except Exception as e:

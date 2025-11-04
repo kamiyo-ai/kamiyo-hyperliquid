@@ -20,7 +20,7 @@ class GitHubHistoricalAggregator(BaseAggregator):
     def __init__(self):
         super().__init__("github_historical")
 
-    def fetch_exploits(self, date: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def fetch_exploits(self, date: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Fetch potential exploits from historical liquidation data
 
@@ -35,7 +35,7 @@ class GitHubHistoricalAggregator(BaseAggregator):
         try:
             # Fetch liquidations.csv
             csv_url = f"{self.BASE_URL}/liquidations.csv"
-            response = self.make_request(csv_url)
+            response = await self.make_request(csv_url)
 
             if not response:
                 return exploits
@@ -120,7 +120,7 @@ class GitHubHistoricalAggregator(BaseAggregator):
             'recovery_status': 'unknown'
         }
 
-    def get_trades(self, date: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_trades(self, date: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Fetch historical trades data
 
@@ -134,7 +134,7 @@ class GitHubHistoricalAggregator(BaseAggregator):
 
         try:
             csv_url = f"{self.BASE_URL}/trades.csv"
-            response = self.make_request(csv_url)
+            response = await self.make_request(csv_url)
 
             if not response:
                 return trades
