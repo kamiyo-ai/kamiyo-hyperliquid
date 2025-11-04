@@ -253,11 +253,11 @@ class OracleMonitor(BaseAggregator):
         # Calculate deviations
         deviations = []
 
-        if binance_price:
+        if binance_price and binance_price > 0:
             dev_pct = abs((hyperliquid_price - binance_price) / binance_price * 100)
             deviations.append(dev_pct)
 
-        if coinbase_price:
+        if coinbase_price and coinbase_price > 0:
             dev_pct = abs((hyperliquid_price - coinbase_price) / coinbase_price * 100)
             deviations.append(dev_pct)
 

@@ -5,7 +5,7 @@ Fetches liquidation and exploit data from the official Hyperliquid API
 """
 
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from .base import BaseAggregator
 
@@ -49,9 +49,68 @@ class HyperliquidAPIAggregator(BaseAggregator):
         """
         Fetch large liquidations that might indicate exploits
         Returns list of liquidation data
+
+        Note: Hyperliquid API requires user addresses to fetch fills/liquidations.
+        This implementation focuses on known high-value accounts and the HLP vault.
+        For comprehensive monitoring, integrate with LiquidationAnalyzer which tracks specific addresses.
         """
-        # Placeholder - implement actual large liquidation detection
-        return []
+        liquidations = []
+
+        # Known high-value addresses to monitor (HLP vault, etc.)
+        # HLP vault address from Hyperliquid documentation
+        monitored_addresses = [
+            "0x3b9cf3e0fb59384cf8be808905d03c52ba3ba5b9",  # HLP vault (example)
+        ]
+
+        for address in monitored_addresses:
+            try:
+                # Fetch user fills which include liquidations
+                payload = {
+                    "type": "userFills",
+                    "user": address
+                }
+
+                response = self.make_request(
+                    self.base_url,
+                    method='POST',
+                    json=payload,
+                    headers={'Content-Type': 'application/json'}
+                )
+
+                if not response:
+                    continue
+
+                fills = response.json()
+
+                # Filter for liquidation fills and large amounts
+                for fill in fills:
+                    # Check if this is a liquidation
+                    # Liquidations typically have specific markers in the Hyperliquid API
+                    is_liquidation = fill.get('liquidation', False) or fill.get('dir') == 'Liquidated'
+
+                    if is_liquidation:
+                        # Calculate USD value
+                        size = float(fill.get('sz', 0))
+                        price = float(fill.get('px', 0))
+                        amount_usd = abs(size * price)
+
+                        # Only track large liquidations (>$100k)
+                        if amount_usd > 100_000:
+                            liquidations.append({
+                                'liquidation_id': fill.get('tid', ''),
+                                'user': address,
+                                'asset': fill.get('coin', ''),
+                                'amount_usd': amount_usd,
+                                'timestamp': datetime.fromtimestamp(fill.get('time', 0) / 1000, tz=timezone.utc) if fill.get('time') else datetime.now(timezone.utc),
+                                'price': price,
+                                'size': size
+                            })
+
+            except Exception as e:
+                self.logger.error(f"Error fetching liquidations for {address}: {e}")
+                continue
+
+        return liquidations
 
     def _analyze_for_exploit(self, liquidation: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
@@ -67,7 +126,7 @@ class HyperliquidAPIAggregator(BaseAggregator):
                 'chain': 'Hyperliquid',
                 'protocol': 'Hyperliquid DEX',
                 'amount_usd': amount_usd,
-                'timestamp': liquidation.get('timestamp', datetime.now()),
+                'timestamp': liquidation.get('timestamp', datetime.now(timezone.utc)),
                 'source_url': self.base_url,
                 'category': 'large_liquidation',
                 'description': f"Large liquidation detected: {liquidation.get('user', '')} - {liquidation.get('asset', '')}",

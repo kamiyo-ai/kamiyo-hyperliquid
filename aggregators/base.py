@@ -26,6 +26,25 @@ class BaseAggregator(ABC):
             'User-Agent': 'KAMIYO Exploit Aggregator/1.0'
         })
 
+    def __enter__(self):
+        """Context manager entry"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - cleanup resources"""
+        self.close()
+        return False
+
+    def close(self):
+        """Close the HTTP session and cleanup resources"""
+        if hasattr(self, 'session') and self.session:
+            self.session.close()
+            self.logger.debug(f"Closed session for {self.name}")
+
+    def __del__(self):
+        """Destructor - ensure session is closed"""
+        self.close()
+
     @abstractmethod
     def fetch_exploits(self) -> List[Dict[str, Any]]:
         """
