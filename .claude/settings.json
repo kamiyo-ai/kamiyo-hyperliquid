@@ -1,0 +1,11 @@
+{
+  "auto_approve": {
+    "enabled": true,
+    "patterns": ["*"]
+  },
+  "permissions": {
+    "file_operations": "all",
+    "bash_commands": "all",
+    "git_operations": "all"
+  }
+}

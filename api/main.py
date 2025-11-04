@@ -400,21 +400,21 @@ async def _fetch_all_exploits() -> List[Dict[str, Any]]:
 
     # Fetch from security monitors
     try:
-        hlp_exploits = hlp_monitor.fetch_exploits()
+        hlp_exploits = await hlp_monitor.fetch_exploits()
         all_exploits.extend(hlp_exploits)
         logger.info(f"Fetched {len(hlp_exploits)} exploits from HLP monitor")
     except Exception as e:
         logger.error(f"Error fetching from HLP monitor: {e}")
 
     try:
-        liquidation_exploits = liquidation_analyzer.fetch_exploits()
+        liquidation_exploits = await liquidation_analyzer.fetch_exploits()
         all_exploits.extend(liquidation_exploits)
         logger.info(f"Fetched {len(liquidation_exploits)} exploits from liquidation analyzer")
     except Exception as e:
         logger.error(f"Error fetching from liquidation analyzer: {e}")
 
     try:
-        oracle_exploits = oracle_monitor.fetch_exploits()
+        oracle_exploits = await oracle_monitor.fetch_exploits()
         all_exploits.extend(oracle_exploits)
         logger.info(f"Fetched {len(oracle_exploits)} exploits from oracle monitor")
     except Exception as e:

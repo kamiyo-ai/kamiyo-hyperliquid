@@ -64,7 +64,7 @@ class LiquidationAnalyzer(BaseAggregator):
         # 4. Historical data from GitHub repository
         self.logger.info(f"Monitoring {len(self.monitored_addresses)} addresses for liquidations")
 
-    def fetch_exploits(self) -> List[Dict[str, Any]]:
+    async def fetch_exploits(self) -> List[Dict[str, Any]]:
         """
         Detect exploits via liquidation pattern analysis
 
@@ -75,7 +75,7 @@ class LiquidationAnalyzer(BaseAggregator):
 
         try:
             # Fetch recent liquidations
-            liquidations = self._fetch_recent_liquidations()
+            liquidations = await self._fetch_recent_liquidations()
 
             if not liquidations:
                 return exploits
@@ -103,7 +103,7 @@ class LiquidationAnalyzer(BaseAggregator):
 
         return exploits
 
-    def _fetch_recent_liquidations(self) -> List[Dict[str, Any]]:
+    async def _fetch_recent_liquidations(self) -> List[Dict[str, Any]]:
         """
         Fetch recent liquidations from monitored addresses
 
@@ -128,7 +128,7 @@ class LiquidationAnalyzer(BaseAggregator):
                     "user": address
                 }
 
-                response = self.make_request(
+                response = await self.make_request(
                     self.API_URL,
                     method='POST',
                     json=payload,

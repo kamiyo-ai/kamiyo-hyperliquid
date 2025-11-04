@@ -61,7 +61,7 @@ class OracleMonitor(BaseAggregator):
         self.deviation_history: Dict[str, deque] = defaultdict(lambda: deque(maxlen=100))
         self.active_deviations: Dict[str, OracleDeviation] = {}
 
-    def fetch_exploits(self) -> List[Dict[str, Any]]:
+    async def fetch_exploits(self) -> List[Dict[str, Any]]:
         """
         Detect oracle manipulation exploits
 
@@ -72,9 +72,9 @@ class OracleMonitor(BaseAggregator):
 
         try:
             # Get prices from all sources
-            hyperliquid_prices = self._fetch_hyperliquid_prices()
-            binance_prices = self._fetch_binance_prices()
-            coinbase_prices = self._fetch_coinbase_prices()
+            hyperliquid_prices = await self._fetch_hyperliquid_prices()
+            binance_prices = await self._fetch_binance_prices()
+            coinbase_prices = await self._fetch_coinbase_prices()
 
             if not hyperliquid_prices:
                 self.logger.warning("Could not fetch Hyperliquid prices")
@@ -121,7 +121,7 @@ class OracleMonitor(BaseAggregator):
 
         return exploits
 
-    def _fetch_hyperliquid_prices(self) -> Dict[str, float]:
+    async def _fetch_hyperliquid_prices(self) -> Dict[str, float]:
         """
         Fetch current prices from Hyperliquid
 
@@ -130,7 +130,7 @@ class OracleMonitor(BaseAggregator):
         """
         payload = {"type": "allMids"}
 
-        response = self.make_request(
+        response = await self.make_request(
             self.HYPERLIQUID_API,
             method='POST',
             json=payload,
@@ -158,7 +158,7 @@ class OracleMonitor(BaseAggregator):
             self.logger.error(f"Error parsing Hyperliquid prices: {e}")
             return {}
 
-    def _fetch_binance_prices(self) -> Dict[str, float]:
+    async def _fetch_binance_prices(self) -> Dict[str, float]:
         """
         Fetch prices from Binance
 
@@ -166,7 +166,7 @@ class OracleMonitor(BaseAggregator):
             Dictionary of asset -> price
         """
         try:
-            response = self.make_request(self.BINANCE_API)
+            response = await self.make_request(self.BINANCE_API)
             if not response:
                 return {}
 
@@ -192,7 +192,7 @@ class OracleMonitor(BaseAggregator):
             self.logger.error(f"Error fetching Binance prices: {e}")
             return {}
 
-    def _fetch_coinbase_prices(self) -> Dict[str, float]:
+    async def _fetch_coinbase_prices(self) -> Dict[str, float]:
         """
         Fetch prices from Coinbase
 
@@ -208,7 +208,7 @@ class OracleMonitor(BaseAggregator):
 
             try:
                 url = f"{self.COINBASE_API}/{coinbase_symbol}/spot"
-                response = self.make_request(url)
+                response = await self.make_request(url)
 
                 if response:
                     data = response.json()

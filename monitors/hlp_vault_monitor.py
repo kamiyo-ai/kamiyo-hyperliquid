@@ -77,7 +77,7 @@ class HLPVaultMonitor(BaseAggregator):
             except Exception as e:
                 self.logger.warning(f"ML models not loaded: {e}. Using rule-based detection only.")
 
-    def fetch_exploits(self) -> List[Dict[str, Any]]:
+    async def fetch_exploits(self) -> List[Dict[str, Any]]:
         """
         Detect exploits targeting the HLP vault
         Returns list of detected exploits
@@ -86,7 +86,7 @@ class HLPVaultMonitor(BaseAggregator):
 
         try:
             # Get current vault state
-            vault_data = self._fetch_vault_details()
+            vault_data = await self._fetch_vault_details()
             if not vault_data:
                 return exploits
 
@@ -110,7 +110,7 @@ class HLPVaultMonitor(BaseAggregator):
 
         return exploits
 
-    def _fetch_vault_details(self) -> Optional[Dict[str, Any]]:
+    async def _fetch_vault_details(self) -> Optional[Dict[str, Any]]:
         """
         Fetch vault details from Hyperliquid API
 
@@ -122,7 +122,7 @@ class HLPVaultMonitor(BaseAggregator):
             "vaultAddress": self.HLP_VAULT_ADDRESS
         }
 
-        response = self.make_request(
+        response = await self.make_request(
             self.API_URL,
             method='POST',
             json=payload,
@@ -219,7 +219,7 @@ class HLPVaultMonitor(BaseAggregator):
             start_value = current_value
             for entry in portfolio:
                 timestamp_ms = entry.get('timestamp', 0)
-                entry_time = datetime.fromtimestamp(timestamp_ms / 1000)
+                entry_time = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
 
                 if entry_time >= cutoff_time:
                     start_value = float(entry.get('accountValue', current_value))
