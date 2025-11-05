@@ -228,7 +228,13 @@ async def get_exploits(
     Returns:
         List of exploits
     """
+    import time
+    start_time = time.time()
+
     try:
+        # Track API request
+        api_requests_total.labels(endpoint="/exploits", method="GET", status="200").inc()
+
         # Check cache
         if exploit_cache['last_updated']:
             cache_age = (datetime.now(timezone.utc) - exploit_cache['last_updated']).total_seconds()
@@ -261,6 +267,17 @@ async def get_exploits(
         # Apply limit
         exploits = exploits[:limit]
 
+        # Track exploits returned (as proxy for detected)
+        exploits_detected_total.labels(
+            monitor="aggregate",
+            severity="mixed",
+            category="all"
+        ).inc(len(exploits))
+
+        # Track request duration
+        duration = time.time() - start_time
+        api_request_duration.labels(endpoint="/exploits", method="GET").observe(duration)
+
         return {
             "success": True,
             "count": len(exploits),
@@ -268,6 +285,8 @@ async def get_exploits(
         }
 
     except Exception as e:
+        # Track error
+        api_requests_total.labels(endpoint="/exploits", method="GET", status="500").inc()
         logger.error(f"Error fetching exploits: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error while fetching exploits")
 
@@ -281,7 +300,13 @@ async def get_stats(request: Request):
     Returns:
         Statistics about exploits
     """
+    import time
+    start_time = time.time()
+
     try:
+        # Track API request
+        api_requests_total.labels(endpoint="/stats", method="GET", status="200").inc()
+
         # Fetch exploits
         exploits = exploit_cache.get('exploits', [])
 
@@ -323,6 +348,10 @@ async def get_stats(request: Request):
         alert_manager = get_alert_manager()
         alert_channels_configured = sum(1 for enabled in alert_manager.enabled_channels.values() if enabled)
 
+        # Track request duration
+        duration = time.time() - start_time
+        api_request_duration.labels(endpoint="/stats", method="GET").observe(duration)
+
         return {
             "success": True,
             "total_exploits": total_count,
@@ -336,6 +365,8 @@ async def get_stats(request: Request):
         }
 
     except Exception as e:
+        # Track error
+        api_requests_total.labels(endpoint="/stats", method="GET", status="500").inc()
         logger.error(f"Error calculating stats: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error while calculating statistics")
 

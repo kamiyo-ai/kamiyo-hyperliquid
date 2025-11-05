@@ -26,7 +26,7 @@ from aggregators.base import BaseAggregator
 
 # Try to import ML models (optional)
 try:
-    from ml_models import get_model_manager, FeatureEngineer
+    from ml_models import get_model_manager, FeatureEngineer, DeFiFeatureEngineer
     ML_AVAILABLE = True
 except ImportError:
     ML_AVAILABLE = False
@@ -60,19 +60,21 @@ class HLPVaultMonitor(BaseAggregator):
         # Initialize ML models if available
         self.ml_model_manager = None
         self.ml_feature_engineer = None
+        self.defi_feature_engineer = None
         self.ml_enabled = False
 
         if ML_AVAILABLE:
             try:
                 self.ml_model_manager = get_model_manager()
                 self.ml_feature_engineer = FeatureEngineer()
+                self.defi_feature_engineer = DeFiFeatureEngineer()
                 self.ml_model_manager.load_all_models()
 
                 # Check if models are actually loaded
                 if (self.ml_model_manager.anomaly_detector and
                     self.ml_model_manager.anomaly_detector.is_trained):
                     self.ml_enabled = True
-                    self.logger.info("ML anomaly detection enabled for HLP monitor")
+                    self.logger.info("ML anomaly detection with DeFi features enabled for HLP monitor")
                 else:
                     self.logger.info("ML models not trained. Using rule-based detection only.")
             except Exception as e:
@@ -431,12 +433,20 @@ class HLPVaultMonitor(BaseAggregator):
                 'is_healthy': snapshot.is_healthy
             }]
 
-            # Extract features
+            # Extract base features
             features_df = self.ml_feature_engineer.extract_hlp_features(snapshot_data)
 
             if features_df.empty:
                 self.logger.debug("Not enough data for ML feature extraction")
                 return None
+
+            # Enhance with DeFi-specific features
+            if self.defi_feature_engineer:
+                try:
+                    features_df = self.defi_feature_engineer.add_defi_features(features_df)
+                    self.logger.debug(f"Enhanced features with DeFi context: {features_df.shape[1]} total features")
+                except Exception as e:
+                    self.logger.warning(f"Failed to add DeFi features: {e}. Using base features only.")
 
             # Get ML prediction
             predictions = self.ml_model_manager.anomaly_detector.predict(features_df)
