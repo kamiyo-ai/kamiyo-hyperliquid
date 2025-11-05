@@ -330,11 +330,52 @@ class OracleMonitor(BaseAggregator):
 
         return min(100, score)
 
+    def _get_max_deviation(self, binance_price: Optional[float], coinbase_price: Optional[float],
+                           hyperliquid_price: float) -> Tuple[float, Optional[str]]:
+        """
+        Get maximum deviation from reference prices
+
+        Args:
+            binance_price: Binance price (optional)
+            coinbase_price: Coinbase price (optional)
+            hyperliquid_price: Hyperliquid price
+
+        Returns:
+            Tuple of (max_deviation_pct, source_name)
+        """
+        deviations = []
+
+        if binance_price and binance_price > 0:
+            dev = abs(self._calculate_deviation(hyperliquid_price, binance_price))
+            deviations.append((dev, 'binance'))
+
+        if coinbase_price and coinbase_price > 0:
+            dev = abs(self._calculate_deviation(hyperliquid_price, coinbase_price))
+            deviations.append((dev, 'coinbase'))
+
+        if not deviations:
+            return (0.0, None)
+
+        return max(deviations, key=lambda x: x[0])
+
+    def _calculate_risk_score(self, deviation_pct: float, duration_sec: float = 0.0) -> float:
+        """
+        Calculate risk score (alias for _calculate_oracle_risk_score)
+
+        Args:
+            deviation_pct: Deviation percentage
+            duration_sec: Duration in seconds
+
+        Returns:
+            Risk score 0-100
+        """
+        return self._calculate_oracle_risk_score(deviation_pct, duration_sec)
+
     def _deviation_to_exploit(self, deviation: OracleDeviation) -> Dict[str, Any]:
         """Convert oracle deviation to exploit format"""
         event_id = self._generate_deviation_id(deviation)
 
-        severity = self._get_deviation_severity(deviation)
+        severity = self._get_deviation_severity(deviation.max_deviation_pct)
 
         return {
             'tx_hash': event_id,
@@ -358,7 +399,45 @@ class OracleMonitor(BaseAggregator):
             'recovery_status': 'active' if deviation.is_dangerous else 'resolved'
         }
 
-    def _get_deviation_severity(self, deviation: OracleDeviation) -> str:
+    def _calculate_deviation(self, hl_price: float, ref_price: float) -> float:
+        """
+        Calculate percentage deviation between two prices
+
+        Args:
+            hl_price: Hyperliquid price
+            ref_price: Reference price
+
+        Returns:
+            Percentage deviation
+        """
+        if ref_price == 0:
+            return 0.0
+        return ((hl_price - ref_price) / ref_price) * 100
+
+    def _get_deviation_severity(self, deviation: float) -> str:
+        """
+        Get severity level for a deviation percentage
+
+        Args:
+            deviation: Deviation percentage (can accept float or OracleDeviation)
+
+        Returns:
+            Severity string
+        """
+        if hasattr(deviation, 'max_deviation_pct'):
+            deviation = deviation.max_deviation_pct
+
+        abs_dev = abs(deviation)
+        if abs_dev >= self.DEVIATION_CRITICAL:
+            return "critical"
+        elif abs_dev >= self.DEVIATION_DANGER:
+            return "high"
+        elif abs_dev >= self.DEVIATION_WARNING:
+            return "medium"
+        else:
+            return "low"
+
+    def _get_deviation_severity_old(self, deviation: OracleDeviation) -> str:
         """Determine severity level of deviation"""
         if deviation.max_deviation_pct >= self.DEVIATION_CRITICAL:
             return "critical"

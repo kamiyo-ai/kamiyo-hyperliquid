@@ -80,6 +80,10 @@ class AnomalyDetector:
             if numeric_features.empty:
                 raise ValueError("No numeric features found for training")
 
+            # Check minimum sample size
+            if len(numeric_features) < 10:
+                raise ValueError(f"Insufficient data for training: {len(numeric_features)} samples (minimum 10 required)")
+
             # Store feature names
             self.feature_names = list(numeric_features.columns)
 
@@ -140,7 +144,14 @@ class AnomalyDetector:
 
         try:
             # Select same features used in training
-            numeric_features = features[self.feature_names].copy() if self.feature_names else features.select_dtypes(include=[np.number]).copy()
+            if self.feature_names:
+                # Check if all required features are present
+                missing_features = set(self.feature_names) - set(features.columns)
+                if missing_features:
+                    raise ValueError(f"Missing features: {missing_features}")
+                numeric_features = features[self.feature_names].copy()
+            else:
+                numeric_features = features.select_dtypes(include=[np.number]).copy()
 
             # Handle infinite values and NaN
             numeric_features = numeric_features.replace([np.inf, -np.inf], np.nan)
@@ -184,6 +195,8 @@ class AnomalyDetector:
             # Convert to DataFrame
             return pd.DataFrame(results)
 
+        except ValueError:
+            raise
         except Exception as e:
             self.logger.error(f"Error predicting anomalies: {e}")
             return pd.DataFrame()
@@ -333,11 +346,13 @@ class AnomalyDetector:
             save_dir = Path(path)
             save_dir.mkdir(parents=True, exist_ok=True)
 
-            # Save model
+            # Save model (with both new and legacy names for compatibility)
             joblib.dump(self.model, save_dir / 'anomaly_model.joblib')
+            joblib.dump(self.model, save_dir / 'model.joblib')  # Legacy name
 
             # Save scaler
             joblib.dump(self.scaler, save_dir / 'anomaly_scaler.joblib')
+            joblib.dump(self.scaler, save_dir / 'scaler.joblib')  # Legacy name
 
             # Save metadata
             metadata = {
@@ -348,6 +363,12 @@ class AnomalyDetector:
                 'trained_at': datetime.now(timezone.utc).isoformat()
             }
             joblib.dump(metadata, save_dir / 'anomaly_metadata.joblib')
+            joblib.dump(metadata, save_dir / 'metadata.joblib')  # Legacy name
+
+            # Also save as JSON for human readability
+            import json
+            with open(save_dir / 'metadata.json', 'w') as f:
+                json.dump(metadata, f, indent=2)
 
             self.logger.info(f"Model saved to {save_dir}")
 
