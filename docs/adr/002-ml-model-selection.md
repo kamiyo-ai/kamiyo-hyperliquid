@@ -133,7 +133,7 @@ class RiskPredictor:
 
 ## Validation
 
-- **Historical incident validation**: Detected March 2025 $4M HLP incident in <5 minutes
+- **Historical incident validation**: Historical validation: March 2025 $4M HLP incident in <5 minutes
 - **Backtesting**: 5/5 documented incidents detected (100% recall)
 - **Production metrics**: <100ms detection latency achieved
 

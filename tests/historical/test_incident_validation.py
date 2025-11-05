@@ -2,7 +2,7 @@
 """
 Historical Incident Validation Tests
 
-Validates that the monitoring system would have detected real-world incidents.
+Validates that the monitoring system detection validated via historical replay real-world incidents.
 """
 
 import pytest

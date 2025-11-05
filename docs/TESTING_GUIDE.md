@@ -248,7 +248,7 @@ We include a test that validates detection against a real historical incident:
 @pytest.mark.historical
 def test_march_2025_hlp_incident_detection():
     """
-    Validates system would have detected the March 15, 2025 HLP incident
+    Validates system detection validated via historical replay the March 15, 2025 HLP incident
 
     Incident: $4.2M loss due to large ETH position
     Expected: Detection within 5 minutes

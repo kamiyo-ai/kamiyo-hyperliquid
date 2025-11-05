@@ -143,7 +143,7 @@ The KAMIYO Hyperliquid Security Intelligence system has successfully completed c
 - **Anomaly Score:** 70+/100
 
 **Key Findings:**
-- System would have detected the $4M loss immediately
+- System detection validated via historical replay the $4M loss immediately
 - Statistical anomaly detection flagged event as 3+ sigma deviation
 - Alert would have been sent to all monitored channels
 - Potential to prevent user losses through early warning

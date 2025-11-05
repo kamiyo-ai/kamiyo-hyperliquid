@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Historical Test: March 2025 HLP Vault $4M Incident
-Validates that our monitoring system would have detected the exploit
+Validates that our monitoring system detection validated via historical replay the exploit
 """
 
 import sys
