@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 KAMIYO Hyperliquid API
 FastAPI server for Hyperliquid exploit intelligence
@@ -16,7 +15,6 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-# Import aggregators and monitors
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -46,9 +44,6 @@ except ImportError:
     logger.warning("ML models not available. Install ML dependencies: pip install scikit-learn statsmodels pandas")
     ML_AVAILABLE = False
 
-# Initialize rate limiter
-# Default: 60 requests per minute per IP
-# Can be overridden with RATE_LIMIT environment variable
 limiter = Limiter(key_func=get_remote_address, default_limits=[os.getenv("RATE_LIMIT", "60/minute")])
 
 # Initialize FastAPI app
@@ -62,28 +57,22 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Configure CORS
-# SECURITY: For production, set ALLOWED_ORIGINS environment variable to specific domains
-# Example: ALLOWED_ORIGINS="https://kamiyo.io,https://app.kamiyo.io"
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=False,  # Changed from True to prevent CSRF when using wildcard origins
+    allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
-# Initialize aggregators
 hyperliquid_agg = HyperliquidAPIAggregator()
 github_agg = GitHubHistoricalAggregator()
 
-# Initialize security monitors
 hlp_monitor = HLPVaultMonitor()
 liquidation_analyzer = LiquidationAnalyzer()
 oracle_monitor = OracleMonitor()
 
-# Initialize database integration
 try:
     db_integration = get_db_integration()
     logger.info("Database integration enabled for API")
@@ -91,7 +80,6 @@ except Exception as e:
     logger.warning(f"Database integration disabled: {e}")
     db_integration = None
 
-# Initialize ML models
 ml_model_manager = None
 ml_feature_engineer = None
 
@@ -99,15 +87,12 @@ if ML_AVAILABLE:
     try:
         ml_model_manager = get_model_manager()
         ml_feature_engineer = FeatureEngineer()
-
-        # Try to load pre-trained models
         ml_model_manager.load_all_models()
         logger.info("ML models loaded successfully")
     except Exception as e:
         logger.warning(f"ML models not loaded: {e}")
         logger.info("Train models with: python scripts/train_ml_models.py")
 
-# In-memory cache (replace with Redis in production)
 exploit_cache = {
     'exploits': [],
     'last_updated': None
@@ -118,7 +103,6 @@ security_cache = {
     'last_scan': None
 }
 
-# Application startup time
 app_start_time = datetime.now(timezone.utc)
 
 

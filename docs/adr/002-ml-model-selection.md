@@ -56,7 +56,7 @@ We will use a **dual-model approach**:
 ## Alternatives Considered
 
 ### Deep Learning (LSTM, Transformer)
-- **Pros**: Can learn complex patterns, state-of-the-art performance
+- **Pros**: Can learn complex patterns, high performance on large datasets
 - **Cons**: Requires large labeled datasets, high computational cost, black box
 - **Why rejected**: Insufficient labeled exploit data, need interpretability
 

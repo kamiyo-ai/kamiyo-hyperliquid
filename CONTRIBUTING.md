@@ -50,18 +50,18 @@ Instances of abusive, harassing, or otherwise unacceptable behavior may be repor
 ### Ways to Contribute
 
 **Code Contributions:**
-- 🐛 Fix bugs
-- ✨ Add new features
-- ⚡ Improve performance
-- 🎨 Enhance UI/UX
-- 📝 Improve documentation
+- Fix bugs
+- Add new features
+- Improve performance
+- Enhance UI/UX
+- Improve documentation
 
 **Non-Code Contributions:**
-- 📖 Write tutorials or blog posts
-- 🎤 Give talks about the project
-- 💡 Suggest new features
-- 🧪 Test and report bugs
-- 📣 Spread the word
+- Write tutorials or blog posts
+- Give talks about the project
+- Suggest new features
+- Test and report bugs
+- Spread the word
 
 ---
 
@@ -558,7 +558,5 @@ Contact us:
 ---
 
 **Thank you for contributing to Hyperliquid Security Monitor!**
-
-Together, we're making DeFi safer for everyone.
 
 [Back to README](README.md) • [Documentation](docs/) • [Issues](https://github.com/kamiyo-ai/kamiyo-hyperliquid/issues)
