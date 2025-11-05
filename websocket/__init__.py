@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Hyperliquid WebSocket Client
 Real-time monitoring for Hyperliquid security events

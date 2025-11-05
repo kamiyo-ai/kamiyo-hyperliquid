@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 API Authentication Module
 Optional API key authentication for production deployments

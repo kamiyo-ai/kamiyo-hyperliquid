@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 WebSocket Runner
 Starts real-time Hyperliquid monitoring with WebSocket client

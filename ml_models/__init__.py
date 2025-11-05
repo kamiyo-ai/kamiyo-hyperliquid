@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Machine Learning Models for Hyperliquid Security Monitoring
 

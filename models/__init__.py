@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Data Models
 Data structures for security monitoring and exploit tracking

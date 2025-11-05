@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Liquidation Pattern Analyzer
 Detects suspicious liquidation patterns that may indicate exploits

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Risk Prediction using Time Series Forecasting
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit Tests for Alert Manager
 Tests multi-channel alert delivery and formatting

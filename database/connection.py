@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Database Connection and Session Management
 Handles PostgreSQL connections and SQLAlchemy session lifecycle

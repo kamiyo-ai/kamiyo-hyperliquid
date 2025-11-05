@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Production Readiness Test Suite
 Comprehensive end-to-end testing of all monitors and API endpoints with real data

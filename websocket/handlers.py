@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 WebSocket Message Handlers
 Process real-time data from Hyperliquid WebSocket and trigger alerts

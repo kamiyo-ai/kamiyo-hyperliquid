@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Hyperliquid Official API Aggregator
 Fetches liquidation and exploit data from the official Hyperliquid API
@@ -57,7 +56,7 @@ class HyperliquidAPIAggregator(BaseAggregator):
 
         Note: Hyperliquid API requires user addresses to fetch fills/liquidations.
         This implementation focuses on known high-value accounts and the HLP vault.
-        For comprehensive monitoring, integrate with LiquidationAnalyzer which tracks specific addresses.
+        For full monitoring coverage, integrate with LiquidationAnalyzer which tracks specific addresses.
         """
         liquidations = []
 

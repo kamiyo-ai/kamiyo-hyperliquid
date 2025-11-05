@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Test Runner
 Runs all unit and integration tests with coverage reporting

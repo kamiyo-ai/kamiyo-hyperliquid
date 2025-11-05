@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Database Wrapper for Monitors
 Automatically persists monitoring data to database

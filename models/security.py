@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Security Event Models
 Data models for Hyperliquid security monitoring and exploit detection

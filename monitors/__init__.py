@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Security Monitors
 Real-time security monitoring for Hyperliquid

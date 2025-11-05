@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit Tests for WebSocket Client
 Tests WebSocket connection, subscription management, and reconnection logic

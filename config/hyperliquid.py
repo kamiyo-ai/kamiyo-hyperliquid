@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Hyperliquid Protocol Configuration
 
@@ -26,7 +25,6 @@ class HyperliquidConfig:
     )
 
     # HLP sub-vaults (community-reported addresses)
-    # TODO: Verify these addresses with Hyperliquid team
     HLP_STRATEGY_A = '0x010461c14e146ac35fe42271bdc1134ee31c703a'
     HLP_STRATEGY_B = '0x31ca8395cf837de08b24da3f660e77761dfb974b'
     HLP_LIQUIDATOR = '0x2e3d94f0562703b25c83308a05046ddaf9a8dd14'

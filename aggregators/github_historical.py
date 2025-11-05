@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 GitHub Historical Data Aggregator
 Fetches historical exploit data from hyperliquid-dex/historical_data repository

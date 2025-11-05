@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 HLP Vault Health Monitor
 Real-time monitoring and anomaly detection for Hyperliquid's HLP vault

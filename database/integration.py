@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Database Integration for Monitors
 Automatically persists monitoring data to PostgreSQL

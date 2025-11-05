@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 SQLAlchemy Database Models
 ORM models for KAMIYO Hyperliquid security monitoring

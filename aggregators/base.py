@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Base Aggregator Class
 All exploit aggregators inherit from this class

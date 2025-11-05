@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Oracle Deviation Monitor
 Detects price manipulation by comparing Hyperliquid oracle vs external sources

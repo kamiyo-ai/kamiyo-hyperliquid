@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Alert System for Hyperliquid Security Monitoring
 Sends security alerts to Discord, Slack, Telegram, or email when critical events occur
@@ -134,16 +133,15 @@ class HyperliquidAlertManager:
             AlertLevel.CRITICAL: 10038562  # Dark red
         }
 
-        # Emojis for severity
-        emojis = {
-            AlertLevel.INFO: '🔵',
-            AlertLevel.WARNING: '🟡',
-            AlertLevel.ERROR: '🔴',
-            AlertLevel.CRITICAL: '🚨'
+        severity_prefix = {
+            AlertLevel.INFO: '[INFO]',
+            AlertLevel.WARNING: '[WARNING]',
+            AlertLevel.ERROR: '[ERROR]',
+            AlertLevel.CRITICAL: '[CRITICAL]'
         }
 
         embed = {
-            "title": f"{emojis[level]} {title}",
+            "title": f"{severity_prefix[level]} {title}",
             "description": message,
             "color": colors[level],
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -248,20 +246,17 @@ class HyperliquidAlertManager:
         if not self.telegram_bot_token or not self.telegram_chat_id:
             return
 
-        # Emojis for severity
-        emojis = {
-            AlertLevel.INFO: '🔵',
-            AlertLevel.WARNING: '🟡',
-            AlertLevel.ERROR: '🔴',
-            AlertLevel.CRITICAL: '🚨'
+        severity_prefix = {
+            AlertLevel.INFO: '[INFO]',
+            AlertLevel.WARNING: '[WARNING]',
+            AlertLevel.ERROR: '[ERROR]',
+            AlertLevel.CRITICAL: '[CRITICAL]'
         }
 
-        # Build message
-        text = f"{emojis[level]} *{title}*\n\n{message}"
+        text = f"{severity_prefix[level]} *{title}*\n\n{message}"
 
-        # Add metadata
         if metadata:
-            text += "\n\n📊 *Details:*\n"
+            text += "\n\n*Details:*\n"
             for key, value in metadata.items():
                 text += f"• *{key}:* {value}\n"
 
@@ -397,7 +392,7 @@ class HyperliquidAlertManager:
             return
 
         self.send_alert(
-            title=f"📊 Oracle Deviation: {asset} ({deviation_pct:.2f}%)",
+            title=f"Oracle Deviation: {asset} ({deviation_pct:.2f}%)",
             message=f"Hyperliquid price for {asset} deviating {deviation_pct:.2f}% from market. Potential manipulation detected.",
             level=level,
             metadata={
@@ -414,7 +409,7 @@ class HyperliquidAlertManager:
         """Alert when flash loan attack pattern detected"""
 
         self.send_alert(
-            title=f"⚡ Flash Loan Attack Detected (${total_usd:,.0f})",
+            title=f"Flash Loan Attack Detected (${total_usd:,.0f})",
             message=f"Potential flash loan attack: ${total_usd:,.0f} liquidated in {duration:.1f}s across {liquidation_count} positions.",
             level=AlertLevel.CRITICAL,
             metadata={
@@ -539,5 +534,5 @@ if __name__ == '__main__':
         assets=["BTC", "ETH"]
     )
 
-    print("\n✅ Alert system ready")
+    print("\nAlert system ready")
     print("Configure DISCORD_WEBHOOK_URL, TELEGRAM_BOT_TOKEN, or SLACK_WEBHOOK_URL to enable alerts")

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Historical incident validation tests
 

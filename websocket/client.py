@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Hyperliquid WebSocket Client
 Real-time monitoring client for Hyperliquid security events
@@ -123,7 +122,7 @@ class HyperliquidWebSocketClient:
             self.reconnect_attempts = 0
             self.stats['connected_at'] = datetime.now(timezone.utc)
 
-            logger.info("✅ WebSocket connected successfully")
+            logger.info("WebSocket connected successfully")
 
             # Subscribe to initial subscriptions
             for sub in self.initial_subscriptions:
@@ -313,7 +312,7 @@ class HyperliquidWebSocketClient:
 
         try:
             await self.connect()
-            logger.info("✅ Reconnected successfully")
+            logger.info("Reconnected successfully")
 
         except Exception as e:
             logger.error(f"Reconnection failed: {e}")

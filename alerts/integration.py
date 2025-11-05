@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Alert Integration for Monitors
 Integrates alert system with security monitors

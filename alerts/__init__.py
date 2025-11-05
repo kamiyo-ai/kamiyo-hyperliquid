@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Alert Notification System
 Multi-channel alert delivery for Hyperliquid security events

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unit Tests for API Endpoints
 Tests FastAPI endpoints, response formatting, and error handling

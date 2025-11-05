@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Monitor Scheduler
 Periodically runs monitors and saves data to database
