@@ -50,6 +50,33 @@ Hyperliquid API
                    +-----------+
 ```
 
+### WebSocket Real-Time Monitoring
+
+```
+wss://api.hyperliquid.xyz/ws
+            │
+            ▼
+    ┌───────────────┐
+    │ WS Client     │  Auto-reconnect, health checks
+    └───────┬───────┘
+            │
+    ┌───────▼───────┐
+    │Circuit Breaker│  Prevent cascade failures
+    └───────┬───────┘
+            │
+    ┌───────▼───────┐
+    │Message Buffer │  10K queue, no data loss
+    └───────┬───────┘
+            │
+    ┌───────▼───────┐
+    │   Handlers    │  Route by channel/type
+    └───────┬───────┘
+            │
+    ┌───────▼───────┐
+    │Monitors/Alerts│  Liquidations, oracle, trades
+    └───────────────┘
+```
+
 ## Monitoring Capabilities
 
 **HLP Vault Monitor**
