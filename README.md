@@ -4,7 +4,8 @@ Real-time exploit detection and anomaly monitoring for Hyperliquid DEX.
 
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
-![Tests](https://img.shields.io/badge/tests-96_passing-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-96/177_passed-yellow.svg)
+![Coverage](https://img.shields.io/badge/coverage-54%25-yellow.svg)
 
 ## Features
 
