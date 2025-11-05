@@ -19,7 +19,7 @@ Real-time exploit detection and anomaly monitoring for Hyperliquid DEX.
 ## Quick Start
 
 ```bash
-git clone https://github.com/mizuki-tamaki/kamiyo-hyperliquid.git
+git clone https://github.com/kamiyo-ai/kamiyo-hyperliquid.git
 cd kamiyo-hyperliquid
 cp .env.example .env
 docker-compose up -d
@@ -177,5 +177,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Support
 
-- Issues: https://github.com/mizuki-tamaki/kamiyo-hyperliquid/issues
+- Issues: https://github.com/kamiyo-ai/kamiyo-hyperliquid/issues
 - Security: security@kamiyo.ai

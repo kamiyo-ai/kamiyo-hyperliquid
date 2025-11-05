@@ -522,7 +522,7 @@ flake8 .
 
 - **GitHub Issues:** Bug reports, feature requests
 - **GitHub Discussions:** General questions, ideas
-- **Discord:** Real-time chat (https://github.com/mizuki-tamaki/kamiyo-hyperliquid/discussions)
+- **Discord:** Real-time chat (https://github.com/kamiyo-ai/kamiyo-hyperliquid/discussions)
 
 ### Getting Help
 
