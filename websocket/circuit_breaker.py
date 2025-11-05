@@ -66,7 +66,9 @@ class CircuitBreaker:
         self.last_failure_time = time.time()
         self.success_count = 0
 
-        if self.failure_count >= self.failure_threshold:
+        if self.state == CircuitState.HALF_OPEN:
+            self._open_circuit()
+        elif self.failure_count >= self.failure_threshold:
             self._open_circuit()
 
     def can_attempt(self) -> bool:
