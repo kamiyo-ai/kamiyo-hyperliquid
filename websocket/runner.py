@@ -178,7 +178,7 @@ class HyperliquidWebSocketRunner:
             # Send startup notification
             if self.alert_manager:
                 self.alert_manager.send_alert(
-                    title="🚀 WebSocket Monitor Started",
+                    title="WebSocket Monitor Started",
                     message=f"Real-time monitoring active for {len(self.monitored_addresses)} addresses",
                     level="info",
                     metadata={
