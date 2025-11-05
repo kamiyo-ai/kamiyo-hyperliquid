@@ -4,7 +4,7 @@ Real-time exploit detection and anomaly monitoring for Hyperliquid DEX.
 
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
-![Tests](https://img.shields.io/badge/tests-78_passing-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-96_passing-brightgreen.svg)
 
 ## Features
 
@@ -103,7 +103,7 @@ pytest tests/unit/ -v
 pytest tests/historical/ -v
 ```
 
-**Test Status**: 78/140 core tests passing (56%)
+**Test Status**: 96/177 tests passing (54.2%)
 
 Passing tests cover all production-critical functionality:
 - HLP vault monitoring and anomaly detection

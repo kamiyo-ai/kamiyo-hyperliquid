@@ -4,7 +4,7 @@
 
 This document explains our testing strategy, test categories, and how to interpret test results for the KAMIYO Hyperliquid Security Monitor.
 
-**Current Test Status:** 78 passing / 157 total (49.7%)
+**Current Test Status:** 96 passing / 177 total (54.2%)
 
 This pass rate reflects a **deliberate testing strategy** focused on quality over quantity, as explained below.
 
