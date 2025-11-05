@@ -82,7 +82,6 @@ class HyperliquidWebSocketClient:
             sub_type.value: [] for sub_type in SubscriptionType
         }
 
-        # Production resilience components
         self.circuit_breaker = CircuitBreaker(
             failure_threshold=5,
             recovery_timeout=60,
@@ -266,7 +265,6 @@ class HyperliquidWebSocketClient:
             self.stats['messages_received'] += 1
             self.stats['last_message_time'] = datetime.now(timezone.utc)
 
-            # Buffer message for resilience
             await self.message_buffer.add(data)
 
             # Process message
