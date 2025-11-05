@@ -522,15 +522,14 @@ flake8 .
 
 - **GitHub Issues:** Bug reports, feature requests
 - **GitHub Discussions:** General questions, ideas
-- **Discord:** Real-time chat (https://discord.gg/kamiyo)
-- **Twitter:** [@kamiyo_ai](https://twitter.com/kamiyo_ai)
+- **Discord:** Real-time chat (https://github.com/mizuki-tamaki/kamiyo-hyperliquid/discussions)
 
 ### Getting Help
 
 **Stuck? Need help?**
 1. Check [Documentation](docs/)
 2. Search [GitHub Discussions](https://github.com/kamiyo-ai/kamiyo-hyperliquid/discussions)
-3. Ask in [Discord](https://discord.gg/kamiyo)
+3. Ask in [Discord](https://github.com/mizuki-tamaki/kamiyo-hyperliquid/discussions)
 4. Create a [GitHub Issue](https://github.com/kamiyo-ai/kamiyo-hyperliquid/issues)
 
 ### Recognition

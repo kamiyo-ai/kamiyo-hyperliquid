@@ -569,7 +569,7 @@ services:
 **Need help?**
 - **GitHub Issues**: https://github.com/kamiyo-ai/kamiyo-hyperliquid/issues
 - **GitHub Discussions**: https://github.com/kamiyo-ai/kamiyo-hyperliquid/discussions
-- **Discord**: https://discord.gg/kamiyo
+- **Discord**: https://github.com/mizuki-tamaki/kamiyo-hyperliquid/discussions
 - **Documentation**: https://docs.kamiyo.ai
 
 **Commercial support available** for production deployments: support@kamiyo.ai
