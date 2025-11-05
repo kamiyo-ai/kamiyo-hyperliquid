@@ -52,3 +52,6 @@ logs/
 # Cache
 .cache/
 *.cache
+
+# Files
+KAMIYO_INTEGRATION_PLAN.md
