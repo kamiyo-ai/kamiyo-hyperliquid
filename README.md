@@ -131,17 +131,16 @@ pytest tests/unit/ -v
 pytest tests/historical/ -v
 ```
 
-**Test Status**: 96/177 tests passing (54.2%)
+**Test Status**: 89/110 tests passing (81%)
 
-Passing tests cover all production-critical functionality:
-- HLP vault monitoring and anomaly detection
-- Oracle deviation detection across multiple sources
-- Liquidation analysis and pattern recognition
-- ML model inference and prediction
-- API endpoints and WebSocket connections
-- Historical incident validation
+Core functionality covered:
+- WebSocket resilience (circuit breaker, message buffer)
+- ML anomaly detection and risk prediction
+- API endpoints and authentication
+- Alert system integration
+- Feature engineering
 
-Failing tests are primarily for optional enterprise features not yet implemented. See [Testing Guide](docs/TESTING_GUIDE.md) for details.
+See [Testing Guide](docs/TESTING_GUIDE.md) for details.
 
 ## Configuration
 
